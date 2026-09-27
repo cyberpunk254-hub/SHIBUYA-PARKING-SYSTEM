@@ -8,11 +8,12 @@
     <div class="admin-head">
         <div>
             <h2>Admin</h2>
-            <p class="lede">Completed visits, every payment attempt and every exception, for monitoring and reconciliation.</p>
+            <p class="lede">Manage parking rates and review visits, payments and exceptions for monitoring and reconciliation.</p>
         </div>
         <button class="btn btn-ghost" type="button" id="refreshBtn">Refresh</button>
     </div>
 
+    <!-- Overview figures, always visible -->
     <div class="stats">
         <div class="stat-box"><div class="value" id="statVisits"><div class="skeleton"></div></div><div class="name">Completed visits</div></div>
         <div class="stat-box"><div class="value aqua" id="statCollected"><div class="skeleton"></div></div><div class="name">Collected (verified payments)</div></div>
@@ -20,8 +21,24 @@
         <div class="stat-box"><div class="value" id="statExceptions"><div class="skeleton"></div></div><div class="name">Exceptions logged</div></div>
     </div>
 
-    <div class="table-block">
-        <h3>Parking rates</h3>
+    <!-- The four sections -->
+    <div class="tabs" role="tablist" aria-label="Admin sections">
+        <button class="tab" role="tab" id="tab-rates" aria-controls="panel-rates" aria-selected="true">
+            Parking rates
+        </button>
+        <button class="tab" role="tab" id="tab-visits" aria-controls="panel-visits" aria-selected="false" tabindex="-1">
+            Completed visits <span class="tab-count" id="countVisits">–</span>
+        </button>
+        <button class="tab" role="tab" id="tab-payments" aria-controls="panel-payments" aria-selected="false" tabindex="-1">
+            Payment attempts <span class="tab-count" id="countPayments">–</span>
+        </button>
+        <button class="tab" role="tab" id="tab-exceptions" aria-controls="panel-exceptions" aria-selected="false" tabindex="-1">
+            Exceptions <span class="tab-count" id="countExceptions">–</span>
+        </button>
+    </div>
+
+    <!-- Parking rates -->
+    <div class="tab-panel" role="tabpanel" id="panel-rates" aria-labelledby="tab-rates">
         <p class="lede" style="margin-bottom: 1rem">Change a fee and save. The time brackets are fixed.</p>
         <form id="ratesForm" novalidate>
             <div class="table-wrap">
@@ -44,8 +61,8 @@
         </form>
     </div>
 
-    <div class="table-block">
-        <h3>Completed visits</h3>
+    <!-- Completed visits -->
+    <div class="tab-panel" role="tabpanel" id="panel-visits" aria-labelledby="tab-visits" hidden>
         <div class="table-wrap">
             <table>
                 <thead><tr><th>Visit</th><th>Number plate</th><th>Slot</th><th>Arrived</th><th>Left</th></tr></thead>
@@ -54,8 +71,8 @@
         </div>
     </div>
 
-    <div class="table-block">
-        <h3>Payment attempts</h3>
+    <!-- Payment attempts -->
+    <div class="tab-panel" role="tabpanel" id="panel-payments" aria-labelledby="tab-payments" hidden>
         <div class="table-wrap">
             <table>
                 <thead><tr><th>Transaction</th><th>Visit</th><th>Amount</th><th>Method</th><th>Status</th><th>Reference</th><th>Time</th></tr></thead>
@@ -64,8 +81,8 @@
         </div>
     </div>
 
-    <div class="table-block">
-        <h3>Exceptions</h3>
+    <!-- Exceptions -->
+    <div class="tab-panel" role="tabpanel" id="panel-exceptions" aria-labelledby="tab-exceptions" hidden>
         <div class="table-wrap">
             <table>
                 <thead><tr><th>Time</th><th>Type</th><th>Number plate or visit</th><th>Resolution</th></tr></thead>
@@ -81,7 +98,47 @@
 {% block scripts %}
 <script>
 (function () {
-    var button = document.getElementById("refreshBtn");
+    var hasMotion = typeof Motion !== "undefined";
+    var reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    // ---------- Tabs ----------
+    var tabs = Array.prototype.slice.call(document.querySelectorAll(".tab"));
+
+    function selectTab(tab, moveFocus) {
+        tabs.forEach(function (t) {
+            var selected = (t === tab);
+            t.setAttribute("aria-selected", selected ? "true" : "false");
+            t.tabIndex = selected ? 0 : -1;
+            document.getElementById(t.getAttribute("aria-controls")).hidden = !selected;
+        });
+
+        var panel = document.getElementById(tab.getAttribute("aria-controls"));
+        if (hasMotion && !reduceMotion) {
+            Motion.animate(panel, { opacity: [0, 1], y: [10, 0] }, { duration: 0.3 });
+        }
+        if (moveFocus) tab.focus();
+
+        // Remember the open section, so a page reload returns to it.
+        history.replaceState(null, "", "#" + tab.id.replace("tab-", ""));
+    }
+
+    tabs.forEach(function (tab, i) {
+        tab.addEventListener("click", function () { selectTab(tab, false); });
+
+        // Left and right arrow keys move between tabs, as screen-reader
+        // and keyboard users expect.
+        tab.addEventListener("keydown", function (e) {
+            if (e.key === "ArrowRight") selectTab(tabs[(i + 1) % tabs.length], true);
+            if (e.key === "ArrowLeft") selectTab(tabs[(i - 1 + tabs.length) % tabs.length], true);
+        });
+    });
+
+    // Open the section named in the address, e.g. /admin#payments
+    var start = document.getElementById("tab-" + location.hash.slice(1));
+    if (start) selectTab(start, false);
+
+    // ---------- Report data ----------
+    var refreshBtn = document.getElementById("refreshBtn");
 
     // Plates are typed in by drivers, so escape them before putting them
     // into the page. Otherwise someone could type HTML into the plate box.
@@ -103,14 +160,21 @@
     }
 
     function render(report) {
-        // Summary figures
+        var visitIds = Object.keys(report.completedVisits);
+        var txIds = Object.keys(report.payments);
+
+        // Overview figures
         document.getElementById("statVisits").textContent = report.completedCount;
         document.getElementById("statCollected").textContent = "Ksh " + report.totalCollected;
         document.getElementById("statFailed").textContent = report.failedAttempts.length;
         document.getElementById("statExceptions").textContent = report.exceptions.length;
 
+        // Counts on the tab buttons
+        document.getElementById("countVisits").textContent = visitIds.length;
+        document.getElementById("countPayments").textContent = txIds.length;
+        document.getElementById("countExceptions").textContent = report.exceptions.length;
+
         // Completed visits (dictionary keyed by vehicleID)
-        var visitIds = Object.keys(report.completedVisits);
         document.getElementById("visitsBody").innerHTML = visitIds.length
             ? visitIds.map(function (id) {
                 var v = report.completedVisits[id];
@@ -120,7 +184,6 @@
             : emptyRow(5, "No completed visits yet. They appear here once a vehicle pays and leaves.");
 
         // Payment attempts (dictionary keyed by transactionID)
-        var txIds = Object.keys(report.payments);
         document.getElementById("paymentsBody").innerHTML = txIds.length
             ? txIds.map(function (id) {
                 var t = report.payments[id];
@@ -142,8 +205,8 @@
     }
 
     function load() {
-        button.disabled = true;
-        button.innerHTML = '<span class="spinner" aria-hidden="true"></span>Refreshing';
+        refreshBtn.disabled = true;
+        refreshBtn.innerHTML = '<span class="spinner" aria-hidden="true"></span>Refreshing';
 
         fetch("/admin/report")
             .then(function (r) { return r.json(); })
@@ -153,12 +216,12 @@
                     emptyRow(5, "Couldn't load the report. Check the server is running, then press Refresh.");
             })
             .then(function () {
-                button.disabled = false;
-                button.textContent = "Refresh";
+                refreshBtn.disabled = false;
+                refreshBtn.textContent = "Refresh";
             });
     }
 
-    button.addEventListener("click", load);
+    refreshBtn.addEventListener("click", load);
     load();
 
     // ---------- Parking rates ----------

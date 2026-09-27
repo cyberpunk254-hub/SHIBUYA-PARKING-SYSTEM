@@ -3,107 +3,117 @@
 
 {% block content %}
 <div class="page">
-<section class="block">
-    <div class="split">
+    <section class="block">
+        <div class="split">
 
-        <div>
-            <h2>Check in</h2>
-            <p class="lede">
-                Enter your number plate at the gate. You'll be given a free slot
-                straight away, and the time you arrived is recorded for billing.
-            </p>
+            <div>
+                <h2>Check in</h2>
+                <p class="lede">
+                    Enter your number plate at the gate. You'll be given a free slot
+                    straight away, and the time you arrived is recorded for billing.
+                </p>
 
-            <div class="stat">
-                <div class="stat-number {% if available == 0 %}full{% endif %}" id="freeCount">{{ available }}</div>
-                <div class="stat-label">slots free out of {{ total }}</div>
+                <div class="stat">
+                    <div class="stat-number {% if available == 0 %}full{% endif %}" id="freeCount">{{ available }}</div>
+                    <div class="stat-label">slots free out of {{ total }}</div>
+                </div>
             </div>
+            <figure class="side-photo">
+                <img src="/static/images/checkin-cars.jpg" alt="A row of cars parked in marked slots" loading="lazy">
+            </figure>
+            <form class="form-card" id="checkinForm" novalidate>
+                <label for="plate">Number plate</label>
+                <input class="plate-input" id="plate" name="number_plate" placeholder="KDA 123X" autocomplete="off"
+                    maxlength="10" required>
+
+                <button class="btn btn-primary" type="submit" id="checkinBtn">Check in</button>
+
+                <div class="result" id="result" role="status" aria-live="polite" hidden></div>
+            </form>
+
         </div>
-
-        <form class="form-card" id="checkinForm" novalidate>
-            <label for="plate">Number plate</label>
-            <input class="plate-input" id="plate" name="number_plate"
-                   placeholder="KDA 123X" autocomplete="off" maxlength="10" required>
-
-            <button class="btn btn-primary" type="submit" id="checkinBtn">Check in</button>
-
-            <div class="result" id="result" role="status" aria-live="polite" hidden></div>
-        </form>
-
-    </div>
-</section>
+    </section>
 </div>
 {% endblock %}
 
 {% block scripts %}
 <script>
-(function () {
-    var form = document.getElementById("checkinForm");
-    var input = document.getElementById("plate");
-    var button = document.getElementById("checkinBtn");
-    var result = document.getElementById("result");
-    var freeCount = document.getElementById("freeCount");
+    (function () {
+        var form = document.getElementById("checkinForm");
+        var input = document.getElementById("plate");
+        var button = document.getElementById("checkinBtn");
+        var result = document.getElementById("result");
+        var freeCount = document.getElementById("freeCount");
 
-    var hasMotion = typeof Motion !== "undefined";
-    var reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        var hasMotion = typeof Motion !== "undefined";
+        var reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-    // Shows the spinner inside the button while the request is running.
-    function setLoading(isLoading) {
-        button.disabled = isLoading;
-        button.innerHTML = isLoading
-            ? '<span class="spinner" aria-hidden="true"></span>Checking in'
-            : "Check in";
-    }
-
-    function showResult(kind, html) {
-        result.className = "result " + kind;
-        result.innerHTML = html;
-        result.hidden = false;
-        if (hasMotion && !reduceMotion) {
-            Motion.animate(result, { opacity: [0, 1], y: [10, 0] }, { duration: 0.4 });
-        }
-    }
-
-    // Turns the server's ISO time ("2026-09-27T10:15:03") into "10:15".
-    function formatTime(iso) {
-        return new Date(iso).toLocaleTimeString("en-KE", { hour: "2-digit", minute: "2-digit" });
-    }
-
-    form.addEventListener("submit", function (event) {
-        event.preventDefault();   // stay on this page instead of reloading
-
-        var plate = input.value.trim().toUpperCase();
-        if (!plate) {
-            showResult("err", "Enter a number plate to check in.");
-            input.focus();
-            return;
+        // Shows the spinner inside the button while the request is running.
+        function setLoading(isLoading) {
+            button.disabled = isLoading;
+            button.innerHTML = isLoading
+                ? '<span class="spinner" aria-hidden="true"></span>Checking in'
+                : "Check in";
         }
 
-        setLoading(true);
+        function showResult(kind, html) {
+            result.className = "result " + kind;
+            result.innerHTML = html;
+            result.hidden = false;
+            if (hasMotion && !reduceMotion) {
+                Motion.animate(result, { opacity: [0, 1], y: [10, 0] }, { duration: 0.4 });
+            }
+        }
 
-        fetch("/entry?number_plate=" + encodeURIComponent(plate), { method: "POST" })
-            .then(function (response) { return response.json(); })
-            .then(function (data) {
-                if (data.success) {
-                    showResult("ok",
-                        "Welcome, " + plate + ". Park in slot" +
-                        '<div class="result-slot">' + data.slotTaken + '</div>' +
-                        '<div class="result-meta">Checked in at ' + formatTime(data.entryTime) +
-                        " · Visit " + data.vehicleID + "</div>");
-                    input.value = "";
-                } else {
-                    showResult("err", data.message);
-                }
+        // Turns the server's ISO time ("2026-09-27T10:15:03") into "10:15".
+        function formatTime(iso) {
+            return new Date(iso).toLocaleTimeString("en-KE", { hour: "2-digit", minute: "2-digit" });
+        }
 
-                freeCount.textContent = data.availableSlots;
-                freeCount.classList.toggle("full", data.availableSlots === 0);
-            })
-            .catch(function () {
-                showResult("err", "The gate couldn't reach the server. Try again, or ask the attendant.");
-            })
-            .then(function () {
-                setLoading(false);   // always restore the button
-            });
-    });
-})();
+        // Plates are typed by drivers, so escape them before putting them
+        // into the page, in case someone types HTML into the plate box.
+        function esc(value) {
+            return String(value == null ? "" : value)
+                .replace(/&/g, "&amp;").replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+        }
+
+        form.addEventListener("submit", function (event) {
+            event.preventDefault();   // stay on this page instead of reloading
+
+            var plate = input.value.trim().toUpperCase();
+            if (!plate) {
+                showResult("err", "Enter a number plate to check in.");
+                input.focus();
+                return;
+            }
+
+            setLoading(true);
+
+            fetch("/entry?number_plate=" + encodeURIComponent(plate), { method: "POST" })
+                .then(function (response) { return response.json(); })
+                .then(function (data) {
+                    if (data.success) {
+                        showResult("ok",
+                            "Welcome, " + esc(plate) + ". Park in slot" +
+                            '<div class="result-slot">' + esc(data.slotTaken) + '</div>' +
+                            '<div class="result-meta">Checked in at ' + formatTime(data.entryTime) +
+                            " · Visit " + esc(data.vehicleID) + "</div>");
+                        input.value = "";
+                    } else {
+                        showResult("err", esc(data.message));
+                    }
+
+                    freeCount.textContent = data.availableSlots;
+                    freeCount.classList.toggle("full", data.availableSlots === 0);
+                })
+                .catch(function () {
+                    showResult("err", "The gate couldn't reach the server. Try again, or ask the attendant.");
+                })
+                .then(function () {
+                    setLoading(false);   // always restore the button
+                });
+        });
+    })();
 </script>
 {% endblock %}

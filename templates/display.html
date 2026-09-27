@@ -3,18 +3,19 @@
 
 {% block content %}
 <section class="hero">
+    <img class="hero-photo" id="heroPhoto" src="/static/images/hero-garage.jpg" alt="" fetchpriority="high">
 
     <svg class="hero-waves" viewBox="0 0 1440 400" preserveAspectRatio="none" aria-hidden="true">
-        <path class="wave" d="M0,250 C240,170 420,330 720,250 C1020,170 1200,310 1440,230"
-              fill="none" stroke="#14EFD0" stroke-width="2" opacity="0.85"/>
-        <path class="wave" d="M0,285 C260,215 440,355 720,280 C1000,205 1210,340 1440,265"
-              fill="none" stroke="#14EFD0" stroke-width="1.5" opacity="0.45"/>
-        <path class="wave" d="M0,320 C280,260 460,375 720,310 C980,245 1220,365 1440,300"
-              fill="none" stroke="#14EFD0" stroke-width="1" opacity="0.22"/>
-        <path class="wave" d="M0,255 C300,330 520,180 820,265 C1080,340 1250,200 1440,275"
-              fill="none" stroke="#FF4B4B" stroke-width="2" opacity="0.8"/>
-        <path class="wave" d="M0,295 C320,365 540,225 840,300 C1100,370 1260,245 1440,310"
-              fill="none" stroke="#FF4B4B" stroke-width="1.5" opacity="0.4"/>
+        <path class="wave" d="M0,250 C240,170 420,330 720,250 C1020,170 1200,310 1440,230" fill="none" stroke="#14EFD0"
+            stroke-width="2" opacity="0.85" />
+        <path class="wave" d="M0,285 C260,215 440,355 720,280 C1000,205 1210,340 1440,265" fill="none" stroke="#14EFD0"
+            stroke-width="1.5" opacity="0.45" />
+        <path class="wave" d="M0,320 C280,260 460,375 720,310 C980,245 1220,365 1440,300" fill="none" stroke="#14EFD0"
+            stroke-width="1" opacity="0.22" />
+        <path class="wave" d="M0,255 C300,330 520,180 820,265 C1080,340 1250,200 1440,275" fill="none" stroke="#FF4B4B"
+            stroke-width="2" opacity="0.8" />
+        <path class="wave" d="M0,295 C320,365 540,225 840,300 C1100,370 1260,245 1440,310" fill="none" stroke="#FF4B4B"
+            stroke-width="1.5" opacity="0.4" />
     </svg>
 
     <div class="hero-inner">
@@ -31,6 +32,16 @@
                 <span id="heroCount">{{ available }} slots free now</span>
             </span>
         </div>
+    </div>
+</section>
+
+<section class="photo-band" aria-labelledby="bandTitle">
+    <img id="bandPhoto" src="/static/images/lot-aerial.jpg"
+        alt="Aerial view of an open-air car park with rows of parked cars" loading="lazy">
+    <div class="photo-band-copy">
+        <h2 id="bandTitle">Every slot, on one screen.</h2>
+        <p>The board below shows the whole car park live, so you know where there's space before you even reach the
+            gate.</p>
     </div>
 </section>
 
@@ -57,139 +68,151 @@
 
 {% block scripts %}
 <script>
-(function () {
-    var hasMotion = typeof Motion !== "undefined";
-    var reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    var animate = hasMotion ? Motion.animate : null;
+    (function () {
+        var hasMotion = typeof Motion !== "undefined";
+        var reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        var animate = hasMotion ? Motion.animate : null;
 
-    // ---------- Hero entrance and drifting waves ----------
-    if (hasMotion && !reduceMotion) {
-        animate("#heroTitle",   { opacity: [0, 1], y: [30, 0] }, { duration: 0.8, delay: 0.1 });
-        animate("#heroText",    { opacity: [0, 1], y: [20, 0] }, { duration: 0.8, delay: 0.3 });
-        animate("#heroActions", { opacity: [0, 1], y: [20, 0] }, { duration: 0.8, delay: 0.5 });
+        // ---------- Hero entrance and drifting waves ----------
+        if (hasMotion && !reduceMotion) {
+            animate("#heroTitle", { opacity: [0, 1], y: [30, 0] }, { duration: 0.8, delay: 0.1 });
+            animate("#heroText", { opacity: [0, 1], y: [20, 0] }, { duration: 0.8, delay: 0.3 });
+            animate("#heroActions", { opacity: [0, 1], y: [20, 0] }, { duration: 0.8, delay: 0.5 });
 
-        document.querySelectorAll(".wave").forEach(function (wave, i) {
-            animate(wave,
-                { x: [0, i % 2 === 0 ? 40 : -40, 0] },
-                { duration: 9 + i * 1.5, repeat: Infinity, ease: "easeInOut" }
+            document.querySelectorAll(".wave").forEach(function (wave, i) {
+                animate(wave,
+                    { x: [0, i % 2 === 0 ? 40 : -40, 0] },
+                    { duration: 9 + i * 1.5, repeat: Infinity, ease: "easeInOut" }
+                );
+            });
+
+            // Hero photo drifts slightly as you scroll, for depth.
+            Motion.scroll(
+                animate("#heroPhoto", { scale: [1.08, 1.18], y: [0, 60] }, { ease: "linear" }),
+                { target: document.querySelector(".hero"), offset: ["start start", "end start"] }
             );
-        });
-    }
 
-    // ---------- Car drawing (top-down view) ----------
-    // Taken slots get one of these colours so the lot looks like a real car park.
-    var carColours = ["#e9e9e9", "#9a9a9a", "#FF4B4B", "#14EFD0", "#d4d4d4", "#5b5b5b"];
+            // Banner photo zooms out gently as it scrolls into view.
+            Motion.scroll(
+                animate("#bandPhoto", { scale: [1.2, 1] }, { ease: "linear" }),
+                { target: document.querySelector(".photo-band"), offset: ["start end", "end start"] }
+            );
+        }
 
-    function carSVG(colour) {
-        return '<svg class="car" viewBox="0 0 60 120" aria-hidden="true">' +
-            // mirrors
-            '<ellipse cx="5" cy="38" rx="4" ry="3" fill="' + colour + '"/>' +
-            '<ellipse cx="55" cy="38" rx="4" ry="3" fill="' + colour + '"/>' +
-            // body
-            '<path d="M14,6 Q30,0 46,6 Q54,10 54,24 L55,96 Q55,112 44,116 Q30,120 16,116 Q5,112 5,96 L6,24 Q6,10 14,6 Z" fill="' + colour + '"/>' +
-            // windscreen, roof, rear window
-            '<path d="M12,34 Q30,26 48,34 L45,50 Q30,46 15,50 Z" fill="#161616"/>' +
-            '<rect x="15" y="52" width="30" height="30" rx="4" fill="#000" opacity="0.12"/>' +
-            '<path d="M15,84 Q30,88 45,84 L47,98 Q30,104 13,98 Z" fill="#161616"/>' +
-            // headlights and tail lights
-            '<ellipse cx="17" cy="9" rx="5" ry="2.5" fill="#fffbe0"/>' +
-            '<ellipse cx="43" cy="9" rx="5" ry="2.5" fill="#fffbe0"/>' +
-            '<rect x="11" y="112" width="9" height="3" rx="1.5" fill="#FF4B4B"/>' +
-            '<rect x="40" y="112" width="9" height="3" rx="1.5" fill="#FF4B4B"/>' +
-            '</svg>';
-    }
+        // ---------- Car drawing (top-down view) ----------
+        // Taken slots get one of these colours so the lot looks like a real car park.
+        var carColours = ["#e9e9e9", "#9a9a9a", "#FF4B4B", "#14EFD0", "#d4d4d4", "#5b5b5b"];
 
-    // ---------- Board rendering ----------
-    var previous = null;   // last known slot statuses, to spot what changed
-    var lotBuilt = false;
+        function carSVG(colour) {
+            return '<svg class="car" viewBox="0 0 60 120" aria-hidden="true">' +
+                // mirrors
+                '<ellipse cx="5" cy="38" rx="4" ry="3" fill="' + colour + '"/>' +
+                '<ellipse cx="55" cy="38" rx="4" ry="3" fill="' + colour + '"/>' +
+                // body
+                '<path d="M14,6 Q30,0 46,6 Q54,10 54,24 L55,96 Q55,112 44,116 Q30,120 16,116 Q5,112 5,96 L6,24 Q6,10 14,6 Z" fill="' + colour + '"/>' +
+                // windscreen, roof, rear window
+                '<path d="M12,34 Q30,26 48,34 L45,50 Q30,46 15,50 Z" fill="#161616"/>' +
+                '<rect x="15" y="52" width="30" height="30" rx="4" fill="#000" opacity="0.12"/>' +
+                '<path d="M15,84 Q30,88 45,84 L47,98 Q30,104 13,98 Z" fill="#161616"/>' +
+                // headlights and tail lights
+                '<ellipse cx="17" cy="9" rx="5" ry="2.5" fill="#fffbe0"/>' +
+                '<ellipse cx="43" cy="9" rx="5" ry="2.5" fill="#fffbe0"/>' +
+                '<rect x="11" y="112" width="9" height="3" rx="1.5" fill="#FF4B4B"/>' +
+                '<rect x="40" y="112" width="9" height="3" rx="1.5" fill="#FF4B4B"/>' +
+                '</svg>';
+        }
 
-    function slotHTML(slotId, status, index) {
-        var free = status === "AVAILABLE";
-        return '<div class="slot ' + (free ? "free" : "taken") + '" id="slot-' + slotId + '">' +
-            '<span class="slot-id">' + slotId + '</span>' +
-            (free ? "" : carSVG(carColours[index % carColours.length])) +
-            '<span class="slot-state">' + (free ? "Free" : "Taken") + '</span>' +
-            '</div>';
-    }
+        // ---------- Board rendering ----------
+        var previous = null;   // last known slot statuses, to spot what changed
+        var lotBuilt = false;
 
-    function renderCount(available, total) {
-        document.getElementById("countWrap").innerHTML =
-            '<div class="count' + (available === 0 ? " full" : "") + '" id="count">' + available + '</div>' +
-            '<div class="count-label">' + (available === 0 ? "Parking full" : "slots free") + '</div>' +
-            '<div class="count-sub">out of ' + total + '. Drive in and check in at the gate.</div>' +
-            '<div class="legend">' +
+        function slotHTML(slotId, status, index) {
+            var free = status === "AVAILABLE";
+            return '<div class="slot ' + (free ? "free" : "taken") + '" id="slot-' + slotId + '">' +
+                '<span class="slot-id">' + slotId + '</span>' +
+                (free ? "" : carSVG(carColours[index % carColours.length])) +
+                '<span class="slot-state">' + (free ? "Free" : "Taken") + '</span>' +
+                '</div>';
+        }
+
+        function renderCount(available, total) {
+            document.getElementById("countWrap").innerHTML =
+                '<div class="count' + (available === 0 ? " full" : "") + '" id="count">' + available + '</div>' +
+                '<div class="count-label">' + (available === 0 ? "Parking full" : "slots free") + '</div>' +
+                '<div class="count-sub">out of ' + total + '. Drive in and check in at the gate.</div>' +
+                '<div class="legend">' +
                 '<span><i style="background:#14EFD0"></i>Free</span>' +
                 '<span><i style="background:#FF4B4B"></i>Taken</span>' +
-            '</div>';
-        document.getElementById("heroCount").textContent = available + " slots free now";
-    }
+                '</div>';
+            document.getElementById("heroCount").textContent = available + " slots free now";
+        }
 
-    function buildLot(slots) {
-        var ids = Object.keys(slots);
-        var html = '<div class="lot" id="lot">';
-        for (var row = 0; row < 5; row++) {
-            if (row === 1 || row === 3) html += '<div class="lane"></div>';
-            html += '<div class="lot-row">';
-            for (var col = 0; col < 10; col++) {
-                var i = row * 10 + col;
-                if (ids[i]) html += slotHTML(ids[i], slots[ids[i]], i);
+        function buildLot(slots) {
+            var ids = Object.keys(slots);
+            var html = '<div class="lot" id="lot">';
+            for (var row = 0; row < 5; row++) {
+                if (row === 1 || row === 3) html += '<div class="lane"></div>';
+                html += '<div class="lot-row">';
+                for (var col = 0; col < 10; col++) {
+                    var i = row * 10 + col;
+                    if (ids[i]) html += slotHTML(ids[i], slots[ids[i]], i);
+                }
+                html += '</div>';
             }
             html += '</div>';
-        }
-        html += '</div>';
-        document.getElementById("lotStage").innerHTML = html;
-        lotBuilt = true;
+            document.getElementById("lotStage").innerHTML = html;
+            lotBuilt = true;
 
-        // 3D scroll: the lot starts tilted back and flattens as it scrolls into view.
-        if (hasMotion && !reduceMotion) {
-            var lot = document.getElementById("lot");
-            Motion.scroll(
-                animate(lot, { rotateX: [48, 0], scale: [0.88, 1], opacity: [0.4, 1] }, { ease: "linear" }),
-                { target: lot, offset: ["start end", "center center"] }
-            );
-        }
-    }
-
-    function updateChangedSlots(slots) {
-        var ids = Object.keys(slots);
-        ids.forEach(function (slotId, i) {
-            if (previous[slotId] === slots[slotId]) return;   // unchanged
-            var old = document.getElementById("slot-" + slotId);
-            var holder = document.createElement("div");
-            holder.innerHTML = slotHTML(slotId, slots[slotId], i);
-            old.replaceWith(holder.firstChild);
-
-            // A car arriving drops into its slot; the slot flashes either way.
+            // 3D scroll: the lot starts tilted back and flattens as it scrolls into view.
             if (hasMotion && !reduceMotion) {
-                var fresh = document.getElementById("slot-" + slotId);
-                var car = fresh.querySelector(".car");
-                if (car) animate(car, { y: [-40, 0], opacity: [0, 1] }, { duration: 0.6 });
-                animate(fresh, { backgroundColor: ["rgba(20,239,208,0.35)", "rgba(20,239,208,0)"] }, { duration: 1.2 });
+                var lot = document.getElementById("lot");
+                Motion.scroll(
+                    animate(lot, { rotateX: [48, 0], scale: [0.88, 1], opacity: [0.4, 1] }, { ease: "linear" }),
+                    { target: lot, offset: ["start end", "center center"] }
+                );
             }
-        });
-    }
+        }
 
-    // Ask the server for the current slot statuses.
-    function refresh() {
-        fetch("/slots")
-            .then(function (response) { return response.json(); })
-            .then(function (slots) {
-                var ids = Object.keys(slots);
-                var available = ids.filter(function (id) { return slots[id] === "AVAILABLE"; }).length;
+        function updateChangedSlots(slots) {
+            var ids = Object.keys(slots);
+            ids.forEach(function (slotId, i) {
+                if (previous[slotId] === slots[slotId]) return;   // unchanged
+                var old = document.getElementById("slot-" + slotId);
+                var holder = document.createElement("div");
+                holder.innerHTML = slotHTML(slotId, slots[slotId], i);
+                old.replaceWith(holder.firstChild);
 
-                renderCount(available, ids.length);
-                if (!lotBuilt) buildLot(slots);
-                else updateChangedSlots(slots);
-
-                previous = slots;
-            })
-            .catch(function () {
-                // Keep showing the last known board if one request fails.
+                // A car arriving drops into its slot; the slot flashes either way.
+                if (hasMotion && !reduceMotion) {
+                    var fresh = document.getElementById("slot-" + slotId);
+                    var car = fresh.querySelector(".car");
+                    if (car) animate(car, { y: [-40, 0], opacity: [0, 1] }, { duration: 0.6 });
+                    animate(fresh, { backgroundColor: ["rgba(20,239,208,0.35)", "rgba(20,239,208,0)"] }, { duration: 1.2 });
+                }
             });
-    }
+        }
 
-    refresh();
-    setInterval(refresh, 5000);   // live: check for changes every 5 seconds
-})();
+        // Ask the server for the current slot statuses.
+        function refresh() {
+            fetch("/slots")
+                .then(function (response) { return response.json(); })
+                .then(function (slots) {
+                    var ids = Object.keys(slots);
+                    var available = ids.filter(function (id) { return slots[id] === "AVAILABLE"; }).length;
+
+                    renderCount(available, ids.length);
+                    if (!lotBuilt) buildLot(slots);
+                    else updateChangedSlots(slots);
+
+                    previous = slots;
+                })
+                .catch(function () {
+                    // Keep showing the last known board if one request fails.
+                });
+        }
+
+        refresh();
+        setInterval(refresh, 5000);   // live: check for changes every 5 seconds
+    })();
 </script>
 {% endblock %}

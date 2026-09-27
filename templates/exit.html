@@ -3,320 +3,333 @@
 
 {% block content %}
 <div class="page">
-<section class="block">
-    <h2>Pay and exit</h2>
-    <p class="lede">
-        Enter your number plate to see how long you stayed and what you owe.
-        The barrier lifts as soon as your payment is confirmed.
-    </p>
+    <section class="block">
+        <h2>Pay and exit</h2>
+        <p class="lede">
+            Enter your number plate to see how long you stayed and what you owe.
+            The barrier lifts as soon as your payment is confirmed.
+        </p>
 
-    <ol class="progress" id="progress">
-        <li class="active">Find your vehicle</li>
-        <li>Pay</li>
-        <li>Drive out</li>
-    </ol>
+        <ol class="progress" id="progress">
+            <li class="active">Find your vehicle</li>
+            <li>Pay</li>
+            <li>Drive out</li>
+        </ol>
 
-    <div class="split">
-        <div class="form-card">
+        <div class="split">
+            <div class="form-card">
 
-            <!-- Stage 1: find the vehicle -->
-            <div class="panel" id="panelFind">
-                <form id="findForm" novalidate>
-                    <label for="plate">Number plate</label>
-                    <input class="plate-input" id="plate" placeholder="KDA 123X" autocomplete="off" maxlength="10">
-                    <button class="btn btn-primary" type="submit" id="findBtn">Find my vehicle</button>
-                </form>
+                <!-- Stage 1: find the vehicle -->
+                <div class="panel" id="panelFind">
+                    <form id="findForm" novalidate>
+                        <label for="plate">Number plate</label>
+                        <input class="plate-input" id="plate" placeholder="KDA 123X" autocomplete="off" maxlength="10">
+                        <button class="btn btn-primary" type="submit" id="findBtn">Find my vehicle</button>
+                    </form>
 
-                <!-- Fallback from the design: attendant searches by slot. -->
-                <form id="slotForm" novalidate hidden>
-                    <p class="divider-text">No record matches that plate. Enter the slot you parked in and an attendant will confirm it.</p>
-                    <label for="slot">Slot number</label>
-                    <input class="slot-input" id="slot" placeholder="A07" autocomplete="off" maxlength="3">
-                    <button class="btn btn-ghost" type="submit" id="slotBtn">Search by slot</button>
-                </form>
+                    <!-- Fallback from the design: attendant searches by slot. -->
+                    <form id="slotForm" novalidate hidden>
+                        <p class="divider-text">No record matches that plate. Enter the slot you parked in and an
+                            attendant will confirm it.</p>
+                        <label for="slot">Slot number</label>
+                        <input class="slot-input" id="slot" placeholder="A07" autocomplete="off" maxlength="3">
+                        <button class="btn btn-ghost" type="submit" id="slotBtn">Search by slot</button>
+                    </form>
 
-                <div class="result" id="findResult" role="status" aria-live="polite" hidden></div>
-            </div>
+                    <div class="result" id="findResult" role="status" aria-live="polite" hidden></div>
+                </div>
 
-            <!-- Stage 2: fee and payment method -->
-            <div class="panel" id="panelPay" hidden>
-                <h3>Your visit</h3>
-                <ul class="summary" id="summary"></ul>
-                <div class="fee" id="fee"></div>
+                <!-- Stage 2: fee and payment method -->
+                <div class="panel" id="panelPay" hidden>
+                    <h3>Your visit</h3>
+                    <ul class="summary" id="summary"></ul>
+                    <div class="fee" id="fee"></div>
 
-                <div id="methodBlock">
-                    <label>Pay with</label>
-                    <div class="methods">
-                        <label class="method"><input type="radio" name="method" value="M-Pesa" checked><span>M-Pesa</span></label>
-                        <label class="method"><input type="radio" name="method" value="Card"><span>Card</span></label>
-                        <label class="method"><input type="radio" name="method" value="Cash"><span>Cash</span></label>
+                    <div id="methodBlock">
+                        <label>Pay with</label>
+                        <div class="methods">
+                            <label class="method"><input type="radio" name="method" value="M-Pesa"
+                                    checked><span>M-Pesa</span></label>
+                            <label class="method"><input type="radio" name="method"
+                                    value="Card"><span>Card</span></label>
+                            <label class="method"><input type="radio" name="method"
+                                    value="Cash"><span>Cash</span></label>
+                        </div>
+                    </div>
+
+                    <button class="btn btn-primary" type="button" id="payBtn">Pay</button>
+                    <div class="result" id="payResult" role="status" aria-live="polite" hidden></div>
+                </div>
+
+                <!-- Stage 2b: payment PENDING -->
+                <div class="panel" id="panelWait" hidden>
+                    <h3>Waiting for confirmation</h3>
+                    <div class="waiting"><span class="dot"></span><span id="waitText">Payment sent. This usually takes a
+                            few seconds.</span></div>
+
+                    <div class="sim">
+                        <p>Demo only. In a live system the payment provider sends this confirmation. These buttons stand
+                            in for it.</p>
+                        <button class="btn btn-primary" type="button" id="simOk">Simulate payment confirmed</button>
+                        <button class="btn btn-danger" type="button" id="simFail">Simulate payment failed</button>
                     </div>
                 </div>
 
-                <button class="btn btn-primary" type="button" id="payBtn">Pay</button>
-                <div class="result" id="payResult" role="status" aria-live="polite" hidden></div>
-            </div>
+                <!-- Stage 2c: payment FAILED -->
+                <div class="panel" id="panelFailed" hidden>
+                    <h3>Payment not received</h3>
+                    <p class="lede" style="margin-bottom: 1rem">The barrier stays closed. You can try again, which
+                        starts a new payment.</p>
+                    <button class="btn btn-primary" type="button" id="retryBtn">Try again</button>
+                </div>
 
-            <!-- Stage 2b: payment PENDING -->
-            <div class="panel" id="panelWait" hidden>
-                <h3>Waiting for confirmation</h3>
-                <div class="waiting"><span class="dot"></span><span id="waitText">Payment sent. This usually takes a few seconds.</span></div>
-
-                <div class="sim">
-                    <p>Demo only. In a live system the payment provider sends this confirmation. These buttons stand in for it.</p>
-                    <button class="btn btn-primary" type="button" id="simOk">Simulate payment confirmed</button>
-                    <button class="btn btn-danger" type="button" id="simFail">Simulate payment failed</button>
+                <!-- Stage 3: barrier open -->
+                <div class="panel" id="panelDone" hidden>
+                    <h3>You're free to go</h3>
+                    <ul class="summary" id="doneSummary"></ul>
+                    <button class="btn btn-ghost" type="button" id="doneBtn">Next vehicle</button>
                 </div>
             </div>
 
-            <!-- Stage 2c: payment FAILED -->
-            <div class="panel" id="panelFailed" hidden>
-                <h3>Payment not received</h3>
-                <p class="lede" style="margin-bottom: 1rem">The barrier stays closed. You can try again, which starts a new payment.</p>
-                <button class="btn btn-primary" type="button" id="retryBtn">Try again</button>
-            </div>
-
-            <!-- Stage 3: barrier open -->
-            <div class="panel" id="panelDone" hidden>
-                <h3>You're free to go</h3>
-                <ul class="summary" id="doneSummary"></ul>
-                <button class="btn btn-ghost" type="button" id="doneBtn">Next vehicle</button>
+            <!-- The exit barrier -->
+            <div class="barrier-card">
+                <img class="card-photo" src="/static/images/exit-garage.jpg" alt="" loading="lazy">
+                <svg class="barrier-svg" viewBox="0 0 360 200" aria-hidden="true">
+                    <rect x="0" y="178" width="360" height="4" fill="#2a2a2a" />
+                    <rect x="30" y="80" width="34" height="100" rx="6" fill="#2b2b2b" />
+                    <circle id="barrierLight" cx="47" cy="98" r="7" fill="#FF4B4B" />
+                    <g id="barrierArm">
+                        <rect x="47" y="118" width="290" height="16" rx="8" fill="#ffffff" />
+                        <rect x="87" y="118" width="30" height="16" fill="#FF4B4B" />
+                        <rect x="157" y="118" width="30" height="16" fill="#FF4B4B" />
+                        <rect x="227" y="118" width="30" height="16" fill="#FF4B4B" />
+                        <rect x="297" y="118" width="30" height="16" fill="#FF4B4B" />
+                    </g>
+                    <circle cx="47" cy="126" r="11" fill="#3a3a3a" />
+                </svg>
+                <div class="barrier-status closed" id="barrierStatus">Barrier closed</div>
             </div>
         </div>
-
-        <!-- The exit barrier -->
-        <div class="barrier-card">
-            <svg class="barrier-svg" viewBox="0 0 360 200" aria-hidden="true">
-                <rect x="0" y="178" width="360" height="4" fill="#2a2a2a"/>
-                <rect x="30" y="80" width="34" height="100" rx="6" fill="#2b2b2b"/>
-                <circle id="barrierLight" cx="47" cy="98" r="7" fill="#FF4B4B"/>
-                <g id="barrierArm">
-                    <rect x="47" y="118" width="290" height="16" rx="8" fill="#ffffff"/>
-                    <rect x="87" y="118" width="30" height="16" fill="#FF4B4B"/>
-                    <rect x="157" y="118" width="30" height="16" fill="#FF4B4B"/>
-                    <rect x="227" y="118" width="30" height="16" fill="#FF4B4B"/>
-                    <rect x="297" y="118" width="30" height="16" fill="#FF4B4B"/>
-                </g>
-                <circle cx="47" cy="126" r="11" fill="#3a3a3a"/>
-            </svg>
-            <div class="barrier-status closed" id="barrierStatus">Barrier closed</div>
-        </div>
-    </div>
-</section>
+    </section>
 </div>
 {% endblock %}
 
 {% block scripts %}
 <script>
-(function () {
-    var hasMotion = typeof Motion !== "undefined";
-    var reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    (function () {
+        var hasMotion = typeof Motion !== "undefined";
+        var reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-    // What the page remembers during one vehicle's exit.
-    var state = { plate: null, fee: null, transactionId: null, pollTimer: null };
+        // What the page remembers during one vehicle's exit.
+        var state = { plate: null, fee: null, transactionId: null, pollTimer: null };
 
-    // ---------- Small helpers ----------
-    function $(id) { return document.getElementById(id); }
-
-    function showPanel(id) {
-        ["panelFind", "panelPay", "panelWait", "panelFailed", "panelDone"].forEach(function (p) {
-            $(p).hidden = (p !== id);
-        });
-        if (hasMotion && !reduceMotion) {
-            Motion.animate($(id), { opacity: [0, 1], y: [12, 0] }, { duration: 0.35 });
+        // ---------- Small helpers ----------
+        function $(id) { return document.getElementById(id); }
+        function esc(value) {
+            return String(value == null ? "" : value)
+                .replace(/&/g, "&amp;").replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
         }
-    }
 
-    function setStage(n) {
-        var items = $("progress").children;
-        for (var i = 0; i < items.length; i++) {
-            items[i].className = i < n - 1 ? "done" : (i === n - 1 ? "active" : "");
-        }
-    }
-
-    // Spinner inside the button while its request runs.
-    function busy(button, isBusy, label) {
-        if (isBusy) button.dataset.label = button.textContent;
-        button.disabled = isBusy;
-        button.innerHTML = isBusy
-            ? '<span class="spinner" aria-hidden="true"></span>' + label
-            : button.dataset.label;
-    }
-
-    function message(boxId, kind, text) {
-        var box = $(boxId);
-        box.className = "result " + kind;
-        box.textContent = text;
-        box.hidden = false;
-    }
-
-    function post(url) {
-        return fetch(url, { method: "POST" }).then(function (r) { return r.json(); });
-    }
-
-    function formatTime(iso) {
-        return new Date(iso).toLocaleTimeString("en-KE", { hour: "2-digit", minute: "2-digit" });
-    }
-
-    function formatDuration(hours) {
-        var totalMinutes = Math.round(hours * 60);
-        var h = Math.floor(totalMinutes / 60), m = totalMinutes % 60;
-        return h > 0 ? h + " h " + m + " min" : m + " min";
-    }
-
-    function setBarrier(open) {
-        $("barrierStatus").textContent = open ? "Barrier open" : "Barrier closed";
-        $("barrierStatus").className = "barrier-status " + (open ? "open" : "closed");
-        $("barrierLight").setAttribute("fill", open ? "#14EFD0" : "#FF4B4B");
-        var arm = $("barrierArm");
-        if (hasMotion && !reduceMotion) {
-            Motion.animate(arm, { rotate: open ? -80 : 0 }, { duration: 1, ease: [0.22, 1, 0.36, 1] });
-        } else {
-            arm.style.transform = open ? "rotate(-80deg)" : "none";
-        }
-    }
-
-    // ---------- Stage 1: find the vehicle ----------
-    function lookup(plate) {
-        busy($("findBtn"), true, "Finding vehicle");
-        post("/exit/lookup?number_plate=" + encodeURIComponent(plate))
-            .then(function (data) {
-                if (!data.success) {
-                    message("findResult", "err", data.message);
-                    $("slotForm").hidden = false;
-                    return;
-                }
-                state.plate = data.numberPlate;
-                state.fee = data.feeAmount;
-
-                $("summary").innerHTML =
-                    "<li><span>Number plate</span><span>" + data.numberPlate + "</span></li>" +
-                    "<li><span>Slot</span><span>" + data.slotTaken + "</span></li>" +
-                    "<li><span>Arrived</span><span>" + formatTime(data.entryTime) + "</span></li>" +
-                    "<li><span>Time parked</span><span>" + formatDuration(data.durationHours) + "</span></li>";
-
-                var free = data.feeAmount === 0;
-                $("fee").textContent = free ? "Free" : "Ksh " + data.feeAmount;
-                $("fee").className = "fee" + (free ? " free" : "");
-                $("methodBlock").hidden = free;
-                $("payBtn").textContent = free ? "Exit, no charge" : "Pay Ksh " + data.feeAmount;
-
-                setStage(2);
-                showPanel("panelPay");
-            })
-            .catch(function () { message("findResult", "err", "Couldn't reach the server. Try again."); })
-            .then(function () { busy($("findBtn"), false); });
-    }
-
-    $("findForm").addEventListener("submit", function (e) {
-        e.preventDefault();
-        var plate = $("plate").value.trim().toUpperCase();
-        if (!plate) { message("findResult", "err", "Enter your number plate."); return; }
-        $("findResult").hidden = true;
-        lookup(plate);
-    });
-
-    // Fallback: search by slot, then confirm the plate before continuing.
-    $("slotForm").addEventListener("submit", function (e) {
-        e.preventDefault();
-        var slot = $("slot").value.trim().toUpperCase();
-        if (!slot) { message("findResult", "err", "Enter the slot you parked in."); return; }
-        busy($("slotBtn"), true, "Searching");
-        post("/exit/lookup-by-slot?slot_taken=" + encodeURIComponent(slot))
-            .then(function (data) {
-                if (!data.success) { message("findResult", "err", data.message); return; }
-                var ok = window.confirm("The vehicle in " + slot + " is " + data.numberPlate +
-                                        ". Does this match the vehicle at the barrier?");
-                if (ok) { $("slotForm").hidden = true; lookup(data.numberPlate); }
-                else { message("findResult", "err", "Plate not confirmed. Please call the attendant."); }
-            })
-            .catch(function () { message("findResult", "err", "Couldn't reach the server. Try again."); })
-            .then(function () { busy($("slotBtn"), false); });
-    });
-
-    // ---------- Stage 2: pay ----------
-    function startPayment() {
-        var method = state.fee === 0
-            ? "Free"
-            : document.querySelector('input[name="method"]:checked').value;
-
-        busy($("payBtn"), true, "Starting payment");
-        post("/payment/start?number_plate=" + encodeURIComponent(state.plate) +
-             "&payment_method=" + encodeURIComponent(method))
-            .then(function (data) {
-                if (!data.success) { message("payResult", "err", data.message); return; }
-                state.transactionId = data.transactionID;
-
-                if (state.fee === 0) {
-                    // Nothing to collect: confirm straight away.
-                    return post("/payment/confirm?transaction_id=" + state.transactionId).then(pollBarrier);
-                }
-                $("waitText").textContent = method + " payment of Ksh " + state.fee +
-                    " sent (" + state.transactionId + "). This usually takes a few seconds.";
-                showPanel("panelWait");
-                startPolling();
-            })
-            .catch(function () { message("payResult", "err", "Couldn't reach the server. Try again."); })
-            .then(function () { busy($("payBtn"), false); });
-    }
-    $("payBtn").addEventListener("click", startPayment);
-
-    // Simulated payment provider responses (demo only).
-    function makeReference() {
-        var chars = "ABCDEFGHJKLMNPQRSTUVWXYZ0123456789", ref = "";
-        for (var i = 0; i < 10; i++) ref += chars[Math.floor(Math.random() * chars.length)];
-        return ref;
-    }
-
-    $("simOk").addEventListener("click", function () {
-        busy($("simOk"), true, "Confirming");
-        var method = document.querySelector('input[name="method"]:checked').value;
-        var ref = method === "Cash" ? "" : "&payment_reference=" + makeReference();
-        post("/payment/confirm?transaction_id=" + state.transactionId + ref)
-            .then(function () { busy($("simOk"), false); });
-    });
-
-    $("simFail").addEventListener("click", function () {
-        busy($("simFail"), true, "Failing");
-        post("/payment/fail?transaction_id=" + state.transactionId)
-            .then(function () { busy($("simFail"), false); });
-    });
-
-    // ---------- Barrier Control: re-check the payment status ----------
-    function startPolling() {
-        stopPolling();
-        state.pollTimer = setInterval(pollBarrier, 2000);
-    }
-    function stopPolling() {
-        if (state.pollTimer) clearInterval(state.pollTimer);
-        state.pollTimer = null;
-    }
-
-    function pollBarrier() {
-        return post("/barrier/exit?number_plate=" + encodeURIComponent(state.plate) +
-                    "&transaction_id=" + state.transactionId)
-            .then(function (data) {
-                if (data.barrierOpen) {
-                    stopPolling();
-                    setBarrier(true);
-                    setStage(3);
-                    $("doneSummary").innerHTML =
-                        "<li><span>Left at</span><span>" + formatTime(data.exitTime) + "</span></li>" +
-                        "<li><span>Slot released</span><span>" + data.slotReleased + "</span></li>" +
-                        "<li><span>Slots now free</span><span>" + data.availableSlots + "</span></li>";
-                    showPanel("panelDone");
-                } else if (data.paymentStatus === "FAILED") {
-                    stopPolling();
-                    showPanel("panelFailed");
-                }
-                // PENDING: keep waiting, the next poll checks again.
+        function showPanel(id) {
+            ["panelFind", "panelPay", "panelWait", "panelFailed", "panelDone"].forEach(function (p) {
+                $(p).hidden = (p !== id);
             });
-    }
+            if (hasMotion && !reduceMotion) {
+                Motion.animate($(id), { opacity: [0, 1], y: [12, 0] }, { duration: 0.35 });
+            }
+        }
 
-    // A retry is a brand-new transaction, as in the design.
-    $("retryBtn").addEventListener("click", function () { showPanel("panelPay"); });
+        function setStage(n) {
+            var items = $("progress").children;
+            for (var i = 0; i < items.length; i++) {
+                items[i].className = i < n - 1 ? "done" : (i === n - 1 ? "active" : "");
+            }
+        }
 
-    $("doneBtn").addEventListener("click", function () { window.location.reload(); });
-})();
+        // Spinner inside the button while its request runs.
+        function busy(button, isBusy, label) {
+            if (isBusy) button.dataset.label = button.textContent;
+            button.disabled = isBusy;
+            button.innerHTML = isBusy
+                ? '<span class="spinner" aria-hidden="true"></span>' + label
+                : button.dataset.label;
+        }
+
+        function message(boxId, kind, text) {
+            var box = $(boxId);
+            box.className = "result " + kind;
+            box.textContent = text;
+            box.hidden = false;
+        }
+
+        function post(url) {
+            return fetch(url, { method: "POST" }).then(function (r) { return r.json(); });
+        }
+
+        function formatTime(iso) {
+            return new Date(iso).toLocaleTimeString("en-KE", { hour: "2-digit", minute: "2-digit" });
+        }
+
+        function formatDuration(hours) {
+            var totalMinutes = Math.round(hours * 60);
+            var h = Math.floor(totalMinutes / 60), m = totalMinutes % 60;
+            return h > 0 ? h + " h " + m + " min" : m + " min";
+        }
+
+        function setBarrier(open) {
+            $("barrierStatus").textContent = open ? "Barrier open" : "Barrier closed";
+            $("barrierStatus").className = "barrier-status " + (open ? "open" : "closed");
+            $("barrierLight").setAttribute("fill", open ? "#14EFD0" : "#FF4B4B");
+            var arm = $("barrierArm");
+            if (hasMotion && !reduceMotion) {
+                Motion.animate(arm, { rotate: open ? -80 : 0 }, { duration: 1, ease: [0.22, 1, 0.36, 1] });
+            } else {
+                arm.style.transform = open ? "rotate(-80deg)" : "none";
+            }
+        }
+
+        // ---------- Stage 1: find the vehicle ----------
+        function lookup(plate) {
+            busy($("findBtn"), true, "Finding vehicle");
+            post("/exit/lookup?number_plate=" + encodeURIComponent(plate))
+                .then(function (data) {
+                    if (!data.success) {
+                        message("findResult", "err", data.message);
+                        $("slotForm").hidden = false;
+                        return;
+                    }
+                    state.plate = data.numberPlate;
+                    state.fee = data.feeAmount;
+
+                    $("summary").innerHTML =
+                        "<li><span>Number plate</span><span>" + esc(data.numberPlate) + "</span></li>" +
+                        "<li><span>Slot</span><span>" + esc(data.slotTaken) + "</span></li>" +
+                        "<li><span>Arrived</span><span>" + formatTime(data.entryTime) + "</span></li>" +
+                        "<li><span>Time parked</span><span>" + formatDuration(data.durationHours) + "</span></li>";
+
+                    var free = data.feeAmount === 0;
+                    $("fee").textContent = free ? "Free" : "Ksh " + data.feeAmount;
+                    $("fee").className = "fee" + (free ? " free" : "");
+                    $("methodBlock").hidden = free;
+                    $("payBtn").textContent = free ? "Exit, no charge" : "Pay Ksh " + data.feeAmount;
+
+                    setStage(2);
+                    showPanel("panelPay");
+                })
+                .catch(function () { message("findResult", "err", "Couldn't reach the server. Try again."); })
+                .then(function () { busy($("findBtn"), false); });
+        }
+
+        $("findForm").addEventListener("submit", function (e) {
+            e.preventDefault();
+            var plate = $("plate").value.trim().toUpperCase();
+            if (!plate) { message("findResult", "err", "Enter your number plate."); return; }
+            $("findResult").hidden = true;
+            lookup(plate);
+        });
+
+        // Fallback: search by slot, then confirm the plate before continuing.
+        $("slotForm").addEventListener("submit", function (e) {
+            e.preventDefault();
+            var slot = $("slot").value.trim().toUpperCase();
+            if (!slot) { message("findResult", "err", "Enter the slot you parked in."); return; }
+            busy($("slotBtn"), true, "Searching");
+            post("/exit/lookup-by-slot?slot_taken=" + encodeURIComponent(slot))
+                .then(function (data) {
+                    if (!data.success) { message("findResult", "err", data.message); return; }
+                    var ok = window.confirm("The vehicle in " + slot + " is " + esc(data.numberPlate) +
+                        ". Does this match the vehicle at the barrier?");
+                    if (ok) { $("slotForm").hidden = true; lookup(data.numberPlate); }
+                    else { message("findResult", "err", "Plate not confirmed. Please call the attendant."); }
+                })
+                .catch(function () { message("findResult", "err", "Couldn't reach the server. Try again."); })
+                .then(function () { busy($("slotBtn"), false); });
+        });
+
+        // ---------- Stage 2: pay ----------
+        function startPayment() {
+            var method = state.fee === 0
+                ? "Free"
+                : document.querySelector('input[name="method"]:checked').value;
+
+            busy($("payBtn"), true, "Starting payment");
+            post("/payment/start?number_plate=" + encodeURIComponent(state.plate) +
+                "&payment_method=" + encodeURIComponent(method))
+                .then(function (data) {
+                    if (!data.success) { message("payResult", "err", data.message); return; }
+                    state.transactionId = data.transactionID;
+
+                    if (state.fee === 0) {
+                        // Nothing to collect: confirm straight away.
+                        return post("/payment/confirm?transaction_id=" + state.transactionId).then(pollBarrier);
+                    }
+                    $("waitText").textContent = method + " payment of Ksh " + state.fee +
+                        " sent (" + state.transactionId + "). This usually takes a few seconds.";
+                    showPanel("panelWait");
+                    startPolling();
+                })
+                .catch(function () { message("payResult", "err", "Couldn't reach the server. Try again."); })
+                .then(function () { busy($("payBtn"), false); });
+        }
+        $("payBtn").addEventListener("click", startPayment);
+
+        // Simulated payment provider responses (demo only).
+        function makeReference() {
+            var chars = "ABCDEFGHJKLMNPQRSTUVWXYZ0123456789", ref = "";
+            for (var i = 0; i < 10; i++) ref += chars[Math.floor(Math.random() * chars.length)];
+            return ref;
+        }
+
+        $("simOk").addEventListener("click", function () {
+            busy($("simOk"), true, "Confirming");
+            var method = document.querySelector('input[name="method"]:checked').value;
+            var ref = method === "Cash" ? "" : "&payment_reference=" + makeReference();
+            post("/payment/confirm?transaction_id=" + state.transactionId + ref)
+                .then(function () { busy($("simOk"), false); });
+        });
+
+        $("simFail").addEventListener("click", function () {
+            busy($("simFail"), true, "Failing");
+            post("/payment/fail?transaction_id=" + state.transactionId)
+                .then(function () { busy($("simFail"), false); });
+        });
+
+        // ---------- Barrier Control: re-check the payment status ----------
+        function startPolling() {
+            stopPolling();
+            state.pollTimer = setInterval(pollBarrier, 2000);
+        }
+        function stopPolling() {
+            if (state.pollTimer) clearInterval(state.pollTimer);
+            state.pollTimer = null;
+        }
+
+        function pollBarrier() {
+            return post("/barrier/exit?number_plate=" + encodeURIComponent(state.plate) +
+                "&transaction_id=" + state.transactionId)
+                .then(function (data) {
+                    if (data.barrierOpen) {
+                        stopPolling();
+                        setBarrier(true);
+                        setStage(3);
+                        $("doneSummary").innerHTML =
+                            "<li><span>Left at</span><span>" + formatTime(data.exitTime) + "</span></li>" +
+                            "<li><span>Slot released</span><span>" + esc(data.slotReleased) + "</span></li>" +
+                            "<li><span>Slots now free</span><span>" + esc(data.availableSlots) + "</span></li>";
+                        showPanel("panelDone");
+                    } else if (data.paymentStatus === "FAILED") {
+                        stopPolling();
+                        showPanel("panelFailed");
+                    }
+                    // PENDING: keep waiting, the next poll checks again.
+                });
+        }
+
+        // A retry is a brand-new transaction, as in the design.
+        $("retryBtn").addEventListener("click", function () { showPanel("panelPay"); });
+
+        $("doneBtn").addEventListener("click", function () { window.location.reload(); });
+    })();
 </script>
 {% endblock %}

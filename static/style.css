@@ -65,13 +65,14 @@ a { color: inherit; }
 }
 
 /* Coloured glows on each side, matching the reference palette board. */
+/* Dark overlay plus the aqua and red glows, sitting on top of the photo. */
 .hero::before {
     content: "";
-    position: absolute; inset: 0;
+    position: absolute; inset: 0; z-index: 1;
     background:
         radial-gradient(ellipse 45% 60% at 0% 40%, rgba(20, 239, 208, 0.30), transparent 70%),
         radial-gradient(ellipse 45% 60% at 100% 40%, rgba(255, 75, 75, 0.28), transparent 70%),
-        var(--black);
+        linear-gradient(180deg, rgba(17, 17, 17, 0.55) 0%, rgba(17, 17, 17, 0.72) 55%, #111 100%);
 }
 
 /* Dotted texture in the two corners, as in the reference. */
@@ -87,6 +88,7 @@ a { color: inherit; }
         radial-gradient(ellipse 35% 45% at 0% 20%, #000 0%, transparent 70%),
         radial-gradient(ellipse 35% 45% at 100% 20%, #000 0%, transparent 70%);
     opacity: 0.9;
+    z-index: 1;
 }
 
 .hero-waves {
@@ -445,3 +447,132 @@ td.empty { color: var(--gray); text-align: center; white-space: normal; padding:
     border: 1px solid #333; background: var(--black); color: var(--white);
 }
 .fee-input:focus { border-color: var(--aqua); outline: none; }
+
+/* ---------------- Admin tabs ---------------- */
+
+.tabs {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.6rem;
+    margin-bottom: 2rem;
+}
+
+@media (max-width: 800px) {
+    .tabs { grid-template-columns: repeat(2, 1fr); }
+}
+
+.tab {
+    display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;
+    padding: 0.9rem 1.1rem;
+    border-radius: 12px;
+    border: 1px solid var(--line);
+    background: var(--surface);
+    color: #bdbdbd;
+    font: inherit; font-weight: 500; font-size: 0.95rem;
+    cursor: pointer; text-align: left;
+    transition: border-color 0.2s ease, color 0.2s ease;
+}
+.tab:hover { border-color: #3a3a3a; color: var(--white); }
+
+.tab[aria-selected="true"] {
+    border-color: var(--aqua);
+    color: var(--aqua);
+    background: rgba(20, 239, 208, 0.06);
+}
+
+.tab-count {
+    min-width: 1.8rem; padding: 0.1rem 0.5rem;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.08);
+    color: #d0d0d0;
+    font-size: 0.8rem; font-weight: 600; text-align: center;
+    font-variant-numeric: tabular-nums;
+}
+.tab[aria-selected="true"] .tab-count { background: rgba(20, 239, 208, 0.15); color: var(--aqua); }
+
+.tab-panel[hidden] { display: none; }
+
+/* ---------------- Photos ---------------- */
+
+.hero { background: var(--black); }
+
+.hero-photo {
+    position: absolute; inset: 0; z-index: 0;
+    width: 100%; height: 100%;
+    object-fit: cover;
+    object-position: center 60%;
+}
+
+/* Wide photo banner between the hero and the live board. */
+.photo-band {
+    position: relative;
+    height: 60vh; min-height: 360px;
+    overflow: hidden;
+    display: grid; align-items: center;
+}
+
+.photo-band img {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+    object-fit: cover;
+    /* Softens the orange trees so they sit with the palette. */
+    filter: saturate(0.55) brightness(0.8);
+}
+
+.photo-band::after {
+    content: "";
+    position: absolute; inset: 0;
+    background: linear-gradient(90deg, rgba(17, 17, 17, 0.92) 0%, rgba(17, 17, 17, 0.55) 55%, rgba(17, 17, 17, 0.2) 100%);
+}
+
+.photo-band-copy {
+    position: relative; z-index: 1;
+    max-width: 1180px; width: 100%; margin: 0 auto; padding: 0 1.5rem;
+}
+
+.photo-band-copy h2 {
+    font-size: clamp(1.9rem, 4vw, 3rem);
+    font-weight: 600; letter-spacing: -0.02em; line-height: 1.1;
+    margin: 0 0 0.8rem; max-width: 16ch;
+}
+
+.photo-band-copy p { color: #c9c9c9; max-width: 42ch; margin: 0; }
+
+/* ---------------- Photos on the check-in and exit pages ---------------- */
+
+/* Check-in: a photo card under the free-slots figure. */
+.side-photo {
+    position: relative;
+    margin-top: 2.5rem;
+    aspect-ratio: 4 / 3;
+    border-radius: 18px;
+    overflow: hidden;
+    border: 1px solid var(--line);
+}
+.side-photo img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.side-photo::after {
+    content: "";
+    position: absolute; inset: 0;
+    background: linear-gradient(180deg, rgba(17, 17, 17, 0) 50%, rgba(17, 17, 17, 0.7) 100%);
+}
+
+@media (max-width: 860px) {
+    .side-photo { display: none; }   /* on phones, the form comes first */
+}
+
+/* Pay and exit: the photo sits behind the barrier illustration. */
+.barrier-card { position: relative; overflow: hidden; min-height: 320px; }
+
+.barrier-card .card-photo {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+    object-fit: cover;
+    opacity: 0.4;
+}
+.barrier-card::before {
+    content: "";
+    position: absolute; inset: 0; z-index: 1;
+    background: linear-gradient(180deg, rgba(24, 24, 24, 0.3) 0%, rgba(24, 24, 24, 0.9) 100%);
+}
+.barrier-card .barrier-svg,
+.barrier-card .barrier-status { position: relative; z-index: 2; }
