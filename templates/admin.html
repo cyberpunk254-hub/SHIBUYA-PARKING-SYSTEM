@@ -1,0 +1,208 @@
+{% extends "base.html" %}
+{% block title %}Admin — Shibuya Parking{% endblock %}
+
+{% block content %}
+<div class="page">
+<section class="block">
+
+    <div class="admin-head">
+        <div>
+            <h2>Admin</h2>
+            <p class="lede">Completed visits, every payment attempt and every exception, for monitoring and reconciliation.</p>
+        </div>
+        <button class="btn btn-ghost" type="button" id="refreshBtn">Refresh</button>
+    </div>
+
+    <div class="stats">
+        <div class="stat-box"><div class="value" id="statVisits"><div class="skeleton"></div></div><div class="name">Completed visits</div></div>
+        <div class="stat-box"><div class="value aqua" id="statCollected"><div class="skeleton"></div></div><div class="name">Collected (verified payments)</div></div>
+        <div class="stat-box"><div class="value red" id="statFailed"><div class="skeleton"></div></div><div class="name">Failed payment attempts</div></div>
+        <div class="stat-box"><div class="value" id="statExceptions"><div class="skeleton"></div></div><div class="name">Exceptions logged</div></div>
+    </div>
+
+    <div class="table-block">
+        <h3>Parking rates</h3>
+        <p class="lede" style="margin-bottom: 1rem">Change a fee and save. The time brackets are fixed.</p>
+        <form id="ratesForm" novalidate>
+            <div class="table-wrap">
+                <table>
+                    <thead><tr><th>Time parked</th><th>Fee (Ksh)</th></tr></thead>
+                    <tbody>
+                        {% for rate in rate_labels() %}
+                        <tr>
+                            <td><label for="fee-{{ rate.ruleID }}">{{ rate.label }}</label></td>
+                            <td><input class="fee-input" type="number" min="0" step="1"
+                                       id="fee-{{ rate.ruleID }}" data-rule="{{ rate.ruleID }}"
+                                       value="{{ rate.fee }}"></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <button class="btn btn-primary" type="submit" id="saveRatesBtn" style="margin-top: 1rem">Save rates</button>
+            <div class="result" id="ratesResult" role="status" aria-live="polite" hidden></div>
+        </form>
+    </div>
+
+    <div class="table-block">
+        <h3>Completed visits</h3>
+        <div class="table-wrap">
+            <table>
+                <thead><tr><th>Visit</th><th>Number plate</th><th>Slot</th><th>Arrived</th><th>Left</th></tr></thead>
+                <tbody id="visitsBody"><tr><td colspan="5"><div class="skeleton sk-row"></div><div class="skeleton sk-row"></div></td></tr></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="table-block">
+        <h3>Payment attempts</h3>
+        <div class="table-wrap">
+            <table>
+                <thead><tr><th>Transaction</th><th>Visit</th><th>Amount</th><th>Method</th><th>Status</th><th>Reference</th><th>Time</th></tr></thead>
+                <tbody id="paymentsBody"><tr><td colspan="7"><div class="skeleton sk-row"></div><div class="skeleton sk-row"></div></td></tr></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="table-block">
+        <h3>Exceptions</h3>
+        <div class="table-wrap">
+            <table>
+                <thead><tr><th>Time</th><th>Type</th><th>Number plate or visit</th><th>Resolution</th></tr></thead>
+                <tbody id="exceptionsBody"><tr><td colspan="4"><div class="skeleton sk-row"></div></td></tr></tbody>
+            </table>
+        </div>
+    </div>
+
+</section>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+    var button = document.getElementById("refreshBtn");
+
+    // Plates are typed in by drivers, so escape them before putting them
+    // into the page. Otherwise someone could type HTML into the plate box.
+    function esc(value) {
+        return String(value == null ? "" : value)
+            .replace(/&/g, "&amp;").replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    }
+
+    function when(iso) {
+        if (!iso) return "—";
+        return new Date(iso).toLocaleString("en-KE", {
+            day: "numeric", month: "short", hour: "2-digit", minute: "2-digit"
+        });
+    }
+
+    function emptyRow(columns, text) {
+        return '<tr><td class="empty" colspan="' + columns + '">' + text + "</td></tr>";
+    }
+
+    function render(report) {
+        // Summary figures
+        document.getElementById("statVisits").textContent = report.completedCount;
+        document.getElementById("statCollected").textContent = "Ksh " + report.totalCollected;
+        document.getElementById("statFailed").textContent = report.failedAttempts.length;
+        document.getElementById("statExceptions").textContent = report.exceptions.length;
+
+        // Completed visits (dictionary keyed by vehicleID)
+        var visitIds = Object.keys(report.completedVisits);
+        document.getElementById("visitsBody").innerHTML = visitIds.length
+            ? visitIds.map(function (id) {
+                var v = report.completedVisits[id];
+                return "<tr><td>" + esc(id) + "</td><td>" + esc(v.numberPlate) + "</td><td>" +
+                       esc(v.slotTaken) + "</td><td>" + when(v.entryTime) + "</td><td>" + when(v.exitTime) + "</td></tr>";
+              }).join("")
+            : emptyRow(5, "No completed visits yet. They appear here once a vehicle pays and leaves.");
+
+        // Payment attempts (dictionary keyed by transactionID)
+        var txIds = Object.keys(report.payments);
+        document.getElementById("paymentsBody").innerHTML = txIds.length
+            ? txIds.map(function (id) {
+                var t = report.payments[id];
+                var status = t.paymentStatus.toLowerCase();
+                return "<tr><td>" + esc(id) + "</td><td>" + esc(t.vehicleID) + '</td><td class="num">Ksh ' +
+                       esc(t.feeAmount) + "</td><td>" + esc(t.payment_method) + '</td><td><span class="badge ' +
+                       status + '">' + esc(t.paymentStatus) + "</span></td><td>" + esc(t.payment_reference || "—") +
+                       "</td><td>" + when(t.created_at) + "</td></tr>";
+              }).join("")
+            : emptyRow(7, "No payment attempts yet.");
+
+        // Exceptions (a list, already in time order)
+        document.getElementById("exceptionsBody").innerHTML = report.exceptions.length
+            ? report.exceptions.map(function (e) {
+                return "<tr><td>" + when(e.created_at) + "</td><td>" + esc(e.type) + "</td><td>" +
+                       esc(e.numberPlate) + "</td><td>" + esc(e.resolution || "Awaiting attendant") + "</td></tr>";
+              }).join("")
+            : emptyRow(4, "No exceptions logged.");
+    }
+
+    function load() {
+        button.disabled = true;
+        button.innerHTML = '<span class="spinner" aria-hidden="true"></span>Refreshing';
+
+        fetch("/admin/report")
+            .then(function (r) { return r.json(); })
+            .then(render)
+            .catch(function () {
+                document.getElementById("visitsBody").innerHTML =
+                    emptyRow(5, "Couldn't load the report. Check the server is running, then press Refresh.");
+            })
+            .then(function () {
+                button.disabled = false;
+                button.textContent = "Refresh";
+            });
+    }
+
+    button.addEventListener("click", load);
+    load();
+
+    // ---------- Parking rates ----------
+    var ratesForm = document.getElementById("ratesForm");
+    var saveBtn = document.getElementById("saveRatesBtn");
+    var ratesResult = document.getElementById("ratesResult");
+
+    function ratesMessage(kind, text) {
+        ratesResult.className = "result " + kind;
+        ratesResult.textContent = text;
+        ratesResult.hidden = false;
+    }
+
+    ratesForm.addEventListener("submit", function (event) {
+        event.preventDefault();
+
+        var fees = {};
+        var inputs = ratesForm.querySelectorAll(".fee-input");
+        for (var i = 0; i < inputs.length; i++) {
+            var value = inputs[i].value.trim();
+            if (value === "" || !/^\d+$/.test(value)) {
+                ratesMessage("err", "Each fee must be a whole number of shillings, 0 or more.");
+                inputs[i].focus();
+                return;
+            }
+            fees[inputs[i].dataset.rule] = parseInt(value, 10);
+        }
+
+        saveBtn.disabled = true;
+        saveBtn.innerHTML = '<span class="spinner" aria-hidden="true"></span>Saving';
+
+        fetch("/admin/rates", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(fees)
+        })
+            .then(function (r) { return r.json(); })
+            .then(function (data) { ratesMessage(data.success ? "ok" : "err", data.message); })
+            .catch(function () { ratesMessage("err", "Couldn't save. Check the server is running and try again."); })
+            .then(function () {
+                saveBtn.disabled = false;
+                saveBtn.textContent = "Save rates";
+            });
+    });
+})();
+</script>
+{% endblock %}

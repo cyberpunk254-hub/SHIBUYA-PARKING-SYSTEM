@@ -4,7 +4,7 @@
 
 from datetime import datetime
 
-from fastapi import FastAPI, Request, Form
+from fastapi import FastAPI, Request, Form, Body
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -24,6 +24,8 @@ from billing import (
     create_payment_transaction,
     confirm_payment,
     fail_payment,
+    update_rate_fees,
+    rate_labels,
 )
 from exception_handling import log_exception
 from reporting import generate_report
@@ -36,6 +38,9 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # HTML pages are rendered from the /templates folder.
 templates = Jinja2Templates(directory="templates")
+
+# Every template can call rate_labels() to show the current rates.
+templates.env.globals["rate_labels"] = rate_labels
 
 
 # ---------------------------------------------------------------
@@ -266,6 +271,11 @@ def exit_page(request: Request):
 # ---------------------------------------------------------------
 # ADMINISTRATIVE REPORTING
 # ---------------------------------------------------------------
+@app.get("/admin", response_class=HTMLResponse)
+def admin_page(request: Request):
+    """Management dashboard: reads everything from generate_report()."""
+    return templates.TemplateResponse(request, "admin.html", {})
+
 
 @app.get("/admin/report")
 def admin_report():
@@ -277,3 +287,15 @@ def admin_report():
 def admin_exceptions():
     """The exception audit trail."""
     return exception_log
+
+
+@app.get("/api/rates")
+def api_rates():
+    """Current rates, in plain language."""
+    return rate_labels()
+
+
+@app.post("/admin/rates")
+def admin_update_rates(fees: dict[str, int] = Body(...)):
+    """Management saves new fee amounts, e.g. {"RATE002": 60}."""
+    return update_rate_fees(fees)

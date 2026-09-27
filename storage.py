@@ -38,17 +38,43 @@ billing = {}
 
 # ---------------------------------------------------------------
 # Table 3: rate_rules — ruleID -> fee bracket
-# Kept as data so management can change rates without code changes.
+# The hour brackets are fixed here. The fee amounts can be changed by
+# management from the Admin page; their changes are saved to
+# rates.json and loaded back on startup, so no code edit is needed.
 # 9999 means "no upper limit".
 # ---------------------------------------------------------------
 
-rate_rules = {
+import json
+from pathlib import Path
+
+RATES_FILE = Path(__file__).parent / "rates.json"
+
+DEFAULT_RATE_RULES = {
     "RATE001": {"minHours": 0, "maxHours": 0.5, "fee": 0},
     "RATE002": {"minHours": 0.5, "maxHours": 2, "fee": 50},
     "RATE003": {"minHours": 2, "maxHours": 4, "fee": 100},
     "RATE004": {"minHours": 4, "maxHours": 6, "fee": 300},
     "RATE005": {"minHours": 6, "maxHours": 9999, "fee": 500},
 }
+
+# Start from a copy of the defaults...
+rate_rules = {rule_id: dict(rule) for rule_id, rule in DEFAULT_RATE_RULES.items()}
+
+# ...then apply any fees management has saved before.
+if RATES_FILE.exists():
+    try:
+        saved_fees = json.loads(RATES_FILE.read_text())
+        for rule_id, fee in saved_fees.items():
+            if rule_id in rate_rules:
+                rate_rules[rule_id]["fee"] = fee
+    except (json.JSONDecodeError, OSError):
+        pass   # a damaged file falls back to the default fees
+
+
+def save_rate_fees():
+    """Write the current fee amounts to rates.json."""
+    fees = {rule_id: rule["fee"] for rule_id, rule in rate_rules.items()}
+    RATES_FILE.write_text(json.dumps(fees, indent=2))
 
 
 # ---------------------------------------------------------------

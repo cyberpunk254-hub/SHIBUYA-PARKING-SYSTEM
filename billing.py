@@ -2,7 +2,7 @@
 # Calculates parking duration and fees, and records payment attempts.
 
 from datetime import datetime
-from storage import billing, rate_rules, counters
+from storage import billing, rate_rules, counters, save_rate_fees
 
 
 def generate_transaction_id():
@@ -71,3 +71,52 @@ def confirm_payment(transaction_id, payment_reference=None):
 def fail_payment(transaction_id):
     """Step 12: mark an attempt FAILED so the driver may retry."""
     billing[transaction_id]["paymentStatus"] = "FAILED"
+
+
+def update_rate_fees(new_fees):
+    """Management changes fee amounts. Brackets stay fixed.
+
+    Every value is checked before anything changes, so a bad entry
+    can never leave the rates half-updated.
+    """
+    for rule_id, fee in new_fees.items():
+        if rule_id not in rate_rules:
+            return {"success": False, "message": "Unknown rate " + rule_id + "."}
+        if fee < 0:
+            return {"success": False, "message": "Fees can't be negative."}
+
+    for rule_id, fee in new_fees.items():
+        rate_rules[rule_id]["fee"] = fee
+
+    save_rate_fees()
+    return {"success": True, "message": "Rates saved. The next vehicle to exit pays the new rates."}
+
+
+def _hours_text(hours):
+    """0.5 -> '30 minutes', 1 -> '1 hour', 4 -> '4 hours'."""
+    if hours < 1:
+        return str(int(hours * 60)) + " minutes"
+    if hours == 1:
+        return "1 hour"
+    return "{:g}".format(hours) + " hours"
+
+
+def rate_labels():
+    """Plain-language description of each bracket, for display.
+
+    Built from rate_rules every time it's called, so the website
+    always shows the current rates.
+    """
+    labels = []
+    for rule_id, rule in rate_rules.items():
+        if rule["maxHours"] >= 9999:
+            label = "Over " + _hours_text(rule["minHours"])
+        else:
+            label = "Up to " + _hours_text(rule["maxHours"])
+        labels.append({
+            "ruleID": rule_id,
+            "label": label,
+            "fee": rule["fee"],
+            "feeText": "Free" if rule["fee"] == 0 else "Ksh " + str(rule["fee"]),
+        })
+    return labels
