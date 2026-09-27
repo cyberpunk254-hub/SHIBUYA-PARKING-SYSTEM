@@ -26,10 +26,14 @@ from billing import (
     fail_payment,
     update_rate_fees,
     rate_labels,
+    request_mpesa_payment,
+    refresh_mpesa_status,
+
 )
 from exception_handling import log_exception
 from reporting import generate_report
 
+from mpesa import daraja_enabled, normalize_phone
 
 app = FastAPI(title="Shibuya Parking System")
 
@@ -164,10 +168,16 @@ def exit_lookup_by_slot(slot_taken: str):
 # ---------------------------------------------------------------
 
 @app.post("/payment/start")
-def start_payment(number_plate: str, payment_method: str):
-    """Step 9: create a payment attempt with status PENDING."""
+def start_payment(number_plate: str, payment_method: str, phone: str = None):
+    """Step 9: create a payment attempt with status PENDING.
+
+    For M-Pesa with Daraja switched on, this also sends the STK Push
+    prompt to the driver's phone.
+    """
     number_plate = number_plate.strip().upper()
     record = find_vehicle_by_plate(number_plate)
+    if record is None:
+        return {"success": False, "message": "No active record for this number plate."}
 
     vehicle_id = record["vehicleID"]
 
@@ -182,15 +192,115 @@ def start_payment(number_plate: str, payment_method: str):
 
     duration_hours = calculate_duration_hours(record["entryTime"], datetime.now())
     fee_amount = calculate_fee(duration_hours)
+
+    use_daraja = payment_method == "M-Pesa" and daraja_enabled() and fee_amount > 0
+    if use_daraja:
+        msisdn = normalize_phone(phone or "")
+        if msisdn is None:
+            return {"success": False, "message": "Enter a valid Safaricom number, for example 0712 345 678."}
+
     transaction_id = create_payment_transaction(vehicle_id, fee_amount, payment_method)
+
+    if use_daraja:
+        push = request_mpesa_payment(transaction_id, msisdn)
+        if not push["ok"]:
+            return {
+                "success": False,
+                "message": "M-Pesa couldn't send the prompt (" + push["message"] + "). Try again or choose another method.",
+            }
 
     return {
         "success": True,
         "transactionID": transaction_id,
         "feeAmount": fee_amount,
         "paymentStatus": "PENDING",
+        "paymentMode": "daraja" if use_daraja else "simulate",
     }
 
+
+@app.post("/payment/confirm")
+def payment_confirm(transaction_id: str, payment_reference: str = None):
+    """Step 11: the payment provider confirms the attempt."""
+    if transaction_id not in billing:
+        return {"success": False, "message": "Unknown transaction."}
+
+    confirm_payment(transaction_id, payment_reference)
+    return {
+        "success": True,
+        "transactionID": transaction_id,
+        "paymentStatus": "VERIFIED",
+    }
+
+
+@app.post("/payment/fail")
+def payment_fail(transaction_id: str):
+    """Step 12: the attempt was rejected or timed out."""
+    if transaction_id not in billing:
+        return {"success": False, "message": "Unknown transaction."}
+
+    fail_payment(transaction_id)
+    log_exception("PAYMENT_FAILED", billing[transaction_id]["vehicleID"])
+    return {
+        "success": True,
+        "transactionID": transaction_id,
+        "paymentStatus": "FAILED",
+        "message": "Payment failed. The driver may retry, which creates a new transaction.",
+    }
+
+
+# ---------------------------------------------------------------
+# BARRIER CONTROL
+# ---------------------------------------------------------------
+
+@app.post("/payment/start")
+def start_payment(number_plate: str, payment_method: str, phone: str = None):
+    """Step 9: create a payment attempt with status PENDING.
+
+    For M-Pesa with Daraja switched on, this also sends the STK Push
+    prompt to the driver's phone.
+    """
+    number_plate = number_plate.strip().upper()
+    record = find_vehicle_by_plate(number_plate)
+    if record is None:
+        return {"success": False, "message": "No active record for this number plate."}
+
+    vehicle_id = record["vehicleID"]
+
+    # Step 10: one attempt at a time, so a slow confirmation cannot
+    # cause the driver to pay twice.
+    if has_pending_payment(vehicle_id):
+        return {
+            "success": False,
+            "reason": "PAYMENT_PENDING",
+            "message": "A payment attempt is already pending for this vehicle.",
+        }
+
+    duration_hours = calculate_duration_hours(record["entryTime"], datetime.now())
+    fee_amount = calculate_fee(duration_hours)
+
+    use_daraja = payment_method == "M-Pesa" and daraja_enabled() and fee_amount > 0
+    if use_daraja:
+        msisdn = normalize_phone(phone or "")
+        if msisdn is None:
+            return {"success": False, "message": "Enter a valid Safaricom number, for example 0712 345 678."}
+
+    transaction_id = create_payment_transaction(vehicle_id, fee_amount, payment_method)
+
+    if use_daraja:
+        push = request_mpesa_payment(transaction_id, msisdn)
+        if not push["ok"]:
+            return {
+                "success": False,
+                "message": "M-Pesa couldn't send the prompt (" + push["message"] + "). Try again or choose another method.",
+            }
+
+    return {
+        "success": True,
+        "transactionID": transaction_id,
+        "feeAmount": fee_amount,
+        "paymentStatus": "PENDING",
+        "paymentMode": "daraja" if use_daraja else "simulate",
+    }
 
 @app.post("/payment/confirm")
 def payment_confirm(transaction_id: str, payment_reference: str = None):
@@ -234,6 +344,9 @@ def barrier_exit(number_plate: str, transaction_id: str):
     if transaction_id not in billing:
         return {"success": False, "message": "Unknown transaction."}
 
+    # For a real M-Pesa payment, ask Safaricom for the latest result first.
+    outcome = refresh_mpesa_status(transaction_id)
+
     status = billing[transaction_id]["paymentStatus"]
 
     if status == "PENDING":
@@ -244,10 +357,12 @@ def barrier_exit(number_plate: str, transaction_id: str):
         }
 
     if status == "FAILED":
+        reason = outcome["message"] if outcome and outcome["status"] == "FAILED" else None
         return {
             "barrierOpen": False,
             "paymentStatus": status,
             "message": "Payment not received. The barrier remains closed.",
+            "reason": reason,
         }
 
     # VERIFIED: the vehicle may leave.
@@ -263,11 +378,17 @@ def barrier_exit(number_plate: str, transaction_id: str):
         "availableSlots": calculate_available_slots(),
     }
 
+
+# ---------------------------------------------------------------
+# PAGES
+# ---------------------------------------------------------------
+
 @app.get("/exit-page", response_class=HTMLResponse)
 def exit_page(request: Request):
     """Pay-and-exit screen used at the exit barrier."""
-    return templates.TemplateResponse(request, "exit.html", {})
-
+    return templates.TemplateResponse(request, "exit.html", {
+        "mpesa_live": bool(daraja_enabled()),
+    })
 # ---------------------------------------------------------------
 # ADMINISTRATIVE REPORTING
 # ---------------------------------------------------------------

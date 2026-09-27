@@ -4,6 +4,10 @@
 from datetime import datetime
 from storage import billing, rate_rules, counters, save_rate_fees
 
+import time
+
+from mpesa import daraja_enabled, stk_push, stk_query
+from exception_handling import log_exception
 
 def generate_transaction_id():
     """Produce the next unique payment attempt ID: TXN001, TXN002 ..."""
@@ -120,3 +124,71 @@ def rate_labels():
             "feeText": "Free" if rule["fee"] == 0 else "Ksh " + str(rule["fee"]),
         })
     return labels
+
+# ---------------------------------------------------------------
+# M-PESA (DARAJA)
+# ---------------------------------------------------------------
+
+# When each M-Pesa payment was last checked, so the barrier's
+# 2-second polling doesn't flood Safaricom with requests.
+_last_mpesa_check = {}
+
+# Step 12 of the design: a payment with no confirmation within this
+# time becomes FAILED, so the driver is never stuck waiting forever.
+PAYMENT_TIME_LIMIT_SECONDS = 120
+
+def request_mpesa_payment(transaction_id, phone):
+    """Send the STK Push prompt for a transaction that is already PENDING.
+
+    If Safaricom refuses, the attempt is marked FAILED straight away,
+    so the driver can retry with a new transaction.
+    """
+    transaction = billing[transaction_id]
+    result = stk_push(phone, transaction["feeAmount"], transaction_id, "Parking fee")
+
+    if not result["ok"]:
+        fail_payment(transaction_id)
+        log_exception("PAYMENT_FAILED", transaction["vehicleID"])
+        return result
+
+    # With the query method, Safaricom's CheckoutRequestID is the
+    # reference that identifies this payment.
+    transaction["payment_reference"] = result["checkoutRequestID"]
+    return result
+
+
+def refresh_mpesa_status(transaction_id):
+    """For a PENDING M-Pesa payment, ask Safaricom for the latest result
+    and update paymentStatus. Returns Safaricom's answer, or None if
+    no check was needed or it's too soon to check again.
+    """
+    transaction = billing.get(transaction_id)
+    if (transaction is None
+            or transaction["paymentStatus"] != "PENDING"
+            or transaction["payment_method"] != "M-Pesa"
+            or not transaction["payment_reference"]
+            or not daraja_enabled()):
+        return None
+
+    # Ask Safaricom at most once every 5 seconds per payment.
+    now = time.time()
+    if now - _last_mpesa_check.get(transaction_id, 0) < 5:
+        return None
+    _last_mpesa_check[transaction_id] = now
+
+    outcome = stk_query(transaction["payment_reference"])
+
+    if outcome["status"] == "VERIFIED":
+        transaction["paymentStatus"] = "VERIFIED"
+    elif outcome["status"] == "FAILED":
+        transaction["paymentStatus"] = "FAILED"
+        log_exception("PAYMENT_FAILED", transaction["vehicleID"])
+    else:
+        # Still PENDING: give up once the time limit has passed.
+        waited = (datetime.now() - transaction["created_at"]).total_seconds()
+        if waited > PAYMENT_TIME_LIMIT_SECONDS:
+            transaction["paymentStatus"] = "FAILED"
+            log_exception("PAYMENT_FAILED", transaction["vehicleID"])
+            outcome = {"status": "FAILED", "message": "No confirmation arrived within 2 minutes."}
+
+    return outcome

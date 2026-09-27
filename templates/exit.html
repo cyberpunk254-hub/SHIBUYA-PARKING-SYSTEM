@@ -6,8 +6,9 @@
     <section class="block">
         <h2>Pay and exit</h2>
         <p class="lede">
-            Enter your number plate to see how long you stayed and what you owe.
-            The barrier lifts as soon as your payment is confirmed.
+        <p class="result-meta" id="failedReason" style="margin: -0.5rem 0 1rem"></p>
+        Enter your number plate to see how long you stayed and what you owe.
+        The barrier lifts as soon as your payment is confirmed.
         </p>
 
         <ol class="progress" id="progress">
@@ -17,7 +18,7 @@
         </ol>
 
         <div class="split">
-            <div class="form-card">
+            <div class="form-card" id="exitCard" data-mpesa-live="{{ 'true' if mpesa_live else 'false' }}">
 
                 <!-- Stage 1: find the vehicle -->
                 <div class="panel" id="panelFind">
@@ -56,6 +57,12 @@
                                     value="Cash"><span>Cash</span></label>
                         </div>
                     </div>
+                    <div id="phoneBlock" hidden style="margin-top: 1rem">
+                        <label for="phone">M-Pesa phone number</label>
+                        <input class="slot-input" id="phone" placeholder="0712 345 678" inputmode="tel"
+                            autocomplete="tel" maxlength="16">
+                    </div>
+
 
                     <button class="btn btn-primary" type="button" id="payBtn">Pay</button>
                     <div class="result" id="payResult" role="status" aria-live="polite" hidden></div>
@@ -67,7 +74,7 @@
                     <div class="waiting"><span class="dot"></span><span id="waitText">Payment sent. This usually takes a
                             few seconds.</span></div>
 
-                    <div class="sim">
+                    <div class="sim" id="simBox">
                         <p>Demo only. In a live system the payment provider sends this confirmation. These buttons stand
                             in for it.</p>
                         <button class="btn btn-primary" type="button" id="simOk">Simulate payment confirmed</button>
@@ -122,6 +129,21 @@
 
         // What the page remembers during one vehicle's exit.
         var state = { plate: null, fee: null, transactionId: null, pollTimer: null };
+    // Whether real M-Pesa (Daraja) is switched on, from the server.
+        // Whether real M-Pesa (Daraja) is switched on. The server writes it
+    // onto the page as data-mpesa-live, and this reads it back.
+    var mpesaLive = document.getElementById("exitCard").dataset.mpesaLive === "true";
+
+    // Show the phone field only for M-Pesa when Daraja is on.
+    function updatePhoneField() {
+        var method = document.querySelector('input[name="method"]:checked').value;
+        $("phoneBlock").hidden = !(mpesaLive && method === "M-Pesa");
+    }
+    document.querySelectorAll('input[name="method"]').forEach(function (radio) {
+        radio.addEventListener("change", updatePhoneField);
+    });
+    updatePhoneField();
+
 
         // ---------- Small helpers ----------
         function $(id) { return document.getElementById(id); }
@@ -254,8 +276,12 @@
                 : document.querySelector('input[name="method"]:checked').value;
 
             busy($("payBtn"), true, "Starting payment");
+            var phoneParam = (mpesaLive && method === "M-Pesa")
+                ? "&phone=" + encodeURIComponent($("phone").value.trim())
+                : "";
+
             post("/payment/start?number_plate=" + encodeURIComponent(state.plate) +
-                "&payment_method=" + encodeURIComponent(method))
+                "&payment_method=" + encodeURIComponent(method) + phoneParam)
                 .then(function (data) {
                     if (!data.success) { message("payResult", "err", data.message); return; }
                     state.transactionId = data.transactionID;
@@ -264,8 +290,15 @@
                         // Nothing to collect: confirm straight away.
                         return post("/payment/confirm?transaction_id=" + state.transactionId).then(pollBarrier);
                     }
-                    $("waitText").textContent = method + " payment of Ksh " + state.fee +
-                        " sent (" + state.transactionId + "). This usually takes a few seconds.";
+                    if (data.paymentMode === "daraja") {
+                        $("waitText").textContent = "Check your phone and enter your M-Pesa PIN to pay Ksh " +
+                            state.fee + ". This can take up to a minute.";
+                        $("simBox").hidden = true;    // real M-Pesa decides, not the demo buttons
+                    } else {
+                        $("waitText").textContent = method + " payment of Ksh " + state.fee +
+                            " sent (" + state.transactionId + "). This usually takes a few seconds.";
+                        $("simBox").hidden = false;
+                    }
                     showPanel("panelWait");
                     startPolling();
                 })
@@ -320,6 +353,7 @@
                         showPanel("panelDone");
                     } else if (data.paymentStatus === "FAILED") {
                         stopPolling();
+                        $("failedReason").textContent = data.reason ? "M-Pesa said: " + data.reason : "";
                         showPanel("panelFailed");
                     }
                     // PENDING: keep waiting, the next poll checks again.
