@@ -1,0 +1,390 @@
+/* style.css — Shibuya Parking System
+   Palette: Aqua Green (free), Vivid Red (taken), Rich Black base. */
+
+:root {
+    --aqua: #14EFD0;
+    --red: #FF4B4B;
+    --gray: #606060;
+    --white: #FFFFFF;
+    --black: #111111;
+    --surface: #181818;
+    --line: #262626;
+    box-sizing: border-box;
+}
+
+*, *::before, *::after { box-sizing: inherit; }
+
+body {
+    margin: 0;
+    background: var(--black);
+    color: var(--white);
+    font-family: 'Sora', 'Segoe UI', system-ui, sans-serif;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+}
+
+a { color: inherit; }
+:focus-visible { outline: 2px solid var(--aqua); outline-offset: 3px; border-radius: 4px; }
+
+/* ---------------- Header ---------------- */
+
+.site-header {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 20;
+    background: rgba(17, 17, 17, 0.72);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--line);
+}
+
+.header-inner {
+    max-width: 1180px; margin: 0 auto; padding: 0.9rem 1.5rem;
+    display: flex; align-items: center; gap: 1.5rem;
+}
+
+.brand { display: flex; align-items: center; gap: 0.6rem; text-decoration: none; font-weight: 600; }
+.brand svg { width: 30px; height: 30px; }
+
+.site-nav { display: flex; gap: 1.4rem; margin-left: auto; }
+.site-nav a { text-decoration: none; color: #b9b9b9; font-size: 0.92rem; font-weight: 500; }
+.site-nav a:hover { color: var(--aqua); }
+
+.clock { color: var(--gray); font-size: 0.85rem; font-variant-numeric: tabular-nums; }
+
+@media (max-width: 760px) {
+    .site-nav { display: none; }
+    .clock { margin-left: auto; }
+}
+
+/* ---------------- Hero: aqua left, red right, waves below ---------------- */
+
+.hero {
+    position: relative;
+    min-height: 100vh;
+    display: grid;
+    align-items: center;
+    overflow: hidden;
+}
+
+/* Coloured glows on each side, matching the reference palette board. */
+.hero::before {
+    content: "";
+    position: absolute; inset: 0;
+    background:
+        radial-gradient(ellipse 45% 60% at 0% 40%, rgba(20, 239, 208, 0.30), transparent 70%),
+        radial-gradient(ellipse 45% 60% at 100% 40%, rgba(255, 75, 75, 0.28), transparent 70%),
+        var(--black);
+}
+
+/* Dotted texture in the two corners, as in the reference. */
+.hero::after {
+    content: "";
+    position: absolute; inset: 0;
+    background-image: radial-gradient(rgba(255, 255, 255, 0.16) 1px, transparent 1px);
+    background-size: 14px 14px;
+    -webkit-mask-image:
+        radial-gradient(ellipse 35% 45% at 0% 20%, #000 0%, transparent 70%),
+        radial-gradient(ellipse 35% 45% at 100% 20%, #000 0%, transparent 70%);
+    mask-image:
+        radial-gradient(ellipse 35% 45% at 0% 20%, #000 0%, transparent 70%),
+        radial-gradient(ellipse 35% 45% at 100% 20%, #000 0%, transparent 70%);
+    opacity: 0.9;
+}
+
+.hero-waves {
+    position: absolute; left: 0; right: 0; bottom: 0; width: 100%; height: 45vh;
+    z-index: 1; pointer-events: none;
+}
+
+.hero-inner {
+    position: relative; z-index: 2;
+    max-width: 1180px; width: 100%; margin: 0 auto;
+    padding: 7rem 1.5rem 9rem;
+}
+
+.hero h1 {
+    font-size: clamp(2.6rem, 7vw, 5rem);
+    line-height: 1.03; font-weight: 600; letter-spacing: -0.035em;
+    margin: 0 0 1.1rem; max-width: 14ch;
+}
+
+.hero p { color: #c9c9c9; font-size: 1.1rem; max-width: 46ch; margin: 0 0 2rem; }
+
+.actions { display: flex; flex-wrap: wrap; gap: 0.8rem; align-items: center; }
+
+.btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 0.55rem;
+    padding: 0.85rem 1.4rem; border-radius: 999px;
+    font: inherit; font-weight: 600; font-size: 0.95rem;
+    text-decoration: none; cursor: pointer; border: 1px solid transparent;
+    min-height: 48px; transition: transform 0.15s ease, opacity 0.2s ease;
+}
+.btn:active { transform: scale(0.97); }
+.btn-primary { background: var(--aqua); color: var(--black); }
+.btn-primary:hover { opacity: 0.9; }
+.btn-ghost { border-color: #3a3a3a; color: var(--white); background: rgba(255, 255, 255, 0.03); }
+.btn-ghost:hover { border-color: var(--aqua); }
+
+.live-chip { display: inline-flex; align-items: center; gap: 0.5rem; margin-left: 0.4rem; color: #cfcfcf; font-size: 0.9rem; }
+.dot { width: 9px; height: 9px; border-radius: 50%; background: var(--aqua); animation: pulse 1.8s infinite; }
+@keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(20, 239, 208, 0.6); }
+    70% { box-shadow: 0 0 0 10px rgba(20, 239, 208, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(20, 239, 208, 0); }
+}
+
+/* ---------------- Sections ---------------- */
+
+.block { max-width: 1180px; margin: 0 auto; padding: 6rem 1.5rem; }
+.block h2 { font-size: clamp(1.8rem, 3.5vw, 2.6rem); letter-spacing: -0.02em; font-weight: 600; margin: 0 0 0.6rem; line-height: 1.1; }
+.lede { color: #a9a9a9; max-width: 52ch; margin: 0 0 3rem; }
+
+/* ---------------- Footer and rate ticker ---------------- */
+
+.site-footer { max-width: 1180px; margin: 0 auto; padding: 2rem 1.5rem 6rem; color: var(--gray); font-size: 0.85rem; }
+
+.ticker {
+    position: fixed; bottom: 0; left: 0; right: 0; z-index: 15;
+    overflow: hidden; white-space: nowrap;
+    background: var(--red); color: var(--black);
+    font-weight: 600; font-size: 0.88rem; padding: 0.55rem 0;
+}
+.ticker-track { display: inline-flex; gap: 3rem; padding-left: 100%; animation: tick 28s linear infinite; }
+@keyframes tick { to { transform: translateX(-100%); } }
+
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+    .ticker-track { padding-left: 1.5rem; }
+}
+
+/* ---------------- Live slot board ---------------- */
+
+.board {
+    display: grid;
+    grid-template-columns: minmax(220px, 300px) 1fr;
+    gap: 3rem;
+    align-items: center;
+}
+
+@media (max-width: 900px) {
+    .board { grid-template-columns: 1fr; }
+}
+
+.count-wrap { min-height: 190px; }
+
+.count {
+    font-size: clamp(5rem, 11vw, 8rem);
+    font-weight: 600; line-height: 0.9; letter-spacing: -0.05em;
+    color: var(--aqua); font-variant-numeric: tabular-nums;
+}
+.count.full { color: var(--red); }
+
+.count-label { font-size: 1.4rem; font-weight: 500; margin: 0.4rem 0; }
+.count-sub { color: var(--gray); font-size: 0.92rem; }
+
+.legend { display: flex; gap: 1.2rem; margin-top: 1.4rem; font-size: 0.85rem; color: #bbb; }
+.legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 0.4rem; vertical-align: -1px; }
+
+/* The lot sits in a 3D stage so it can tilt as it scrolls into view. */
+.lot-stage { perspective: 1200px; overflow-x: auto; padding: 1rem 0 2rem; }
+
+.lot {
+    min-width: 560px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    padding: 1.2rem;
+    transform-origin: 50% 100%;
+    box-shadow: 0 40px 80px -30px rgba(20, 239, 208, 0.25);
+}
+
+.lot-row { display: grid; grid-template-columns: repeat(10, 1fr); }
+
+.lane {
+    height: 22px; margin: 0.35rem 0;
+    background: repeating-linear-gradient(90deg, #3a3a3a 0 18px, transparent 18px 34px) center / 100% 2px no-repeat;
+}
+
+.slot {
+    position: relative;
+    aspect-ratio: 5 / 8;
+    border-left: 2px solid #3b3b3b;
+    display: grid; place-items: center;
+    font-size: 0.7rem; color: #8a8a8a;
+}
+.lot-row .slot:last-child { border-right: 2px solid #3b3b3b; }
+
+.slot .slot-id { position: absolute; top: 4px; font-weight: 500; }
+.slot .slot-state { position: absolute; bottom: 4px; font-weight: 600; font-size: 0.62rem; }
+
+.slot.free { background: linear-gradient(to top, rgba(20, 239, 208, 0.14), rgba(20, 239, 208, 0.02)); }
+.slot.free .slot-state { color: var(--aqua); }
+.slot.taken .slot-state { color: var(--red); }
+
+.slot .car { width: 58%; }
+
+/* ---------------- Skeleton loading ---------------- */
+
+.skeleton {
+    background: linear-gradient(90deg, #1d1d1d 25%, #2a2a2a 37%, #1d1d1d 63%);
+    background-size: 400% 100%;
+    animation: shimmer 1.3s infinite;
+    border-radius: 8px;
+}
+@keyframes shimmer {
+    0% { background-position: 100% 50%; }
+    100% { background-position: 0 50%; }
+}
+.sk-count { width: 170px; height: 120px; margin-bottom: 1rem; }
+.sk-line { height: 14px; margin: 0.6rem 0; }
+.sk-lot { height: 330px; border-radius: 18px; }
+
+/* ---------------- Inner pages (check in, pay and exit, admin) ---------------- */
+
+.page {
+    position: relative;
+    overflow: hidden;
+    min-height: 100vh;
+}
+
+/* A quieter version of the homepage glow, so every page feels related. */
+.page::before {
+    content: "";
+    position: absolute; inset: 0; z-index: -1;
+    background:
+        radial-gradient(ellipse 40% 50% at 0% 10%, rgba(20, 239, 208, 0.16), transparent 70%),
+        radial-gradient(ellipse 40% 50% at 100% 10%, rgba(255, 75, 75, 0.14), transparent 70%);
+}
+
+.page .block { padding-top: 8rem; }
+
+.split {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 3rem;
+    align-items: start;
+}
+
+@media (max-width: 860px) {
+    .split { grid-template-columns: 1fr; }
+}
+
+.stat { margin-top: 2rem; }
+.stat-number { font-size: 3rem; font-weight: 600; color: var(--aqua); line-height: 1; font-variant-numeric: tabular-nums; }
+.stat-number.full { color: var(--red); }
+.stat-label { color: var(--gray); font-size: 0.9rem; }
+
+/* ---------------- Forms ---------------- */
+
+.form-card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    padding: 1.8rem;
+}
+
+.form-card label { display: block; font-size: 0.88rem; color: #bdbdbd; margin-bottom: 0.5rem; }
+
+/* Styled like a real number plate: white, bold, spaced out. */
+.plate-input {
+    width: 100%;
+    font: inherit; font-size: 1.6rem; font-weight: 600;
+    letter-spacing: 0.08em; text-transform: uppercase; text-align: center;
+    padding: 0.8rem 1rem;
+    border-radius: 10px; border: 2px solid #333;
+    background: #fff; color: #111;
+}
+.plate-input:focus { border-color: var(--aqua); outline: none; }
+
+.form-card .btn { width: 100%; margin-top: 1rem; }
+.btn:disabled { opacity: 0.75; cursor: wait; }
+
+/* Spinners appear only inside buttons. */
+.spinner {
+    width: 18px; height: 18px; border-radius: 50%;
+    border: 2.5px solid rgba(17, 17, 17, 0.25);
+    border-top-color: var(--black);
+    animation: spin 0.7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ---------------- Result messages ---------------- */
+
+.result { margin-top: 1.2rem; padding: 1.1rem 1.2rem; border-radius: 12px; font-size: 0.95rem; }
+.result[hidden] { display: none; }
+.result.ok { border: 1px solid var(--aqua); background: rgba(20, 239, 208, 0.08); }
+.result.err { border: 1px solid var(--red); background: rgba(255, 75, 75, 0.08); }
+
+.result-slot { font-size: 3.2rem; font-weight: 600; color: var(--aqua); line-height: 1; margin: 0.4rem 0; letter-spacing: -0.03em; }
+.result-meta { color: #bdbdbd; font-size: 0.88rem; }
+
+/* ---------------- Pay and exit ---------------- */
+
+/* Progress through the three exit stages. */
+.progress {
+    list-style: none; padding: 0; margin: 0 0 2.5rem;
+    display: flex; gap: 0.5rem; flex-wrap: wrap;
+    counter-reset: stage;
+}
+.progress li {
+    counter-increment: stage;
+    padding: 0.45rem 0.95rem; border-radius: 999px;
+    border: 1px solid var(--line); color: var(--gray);
+    font-size: 0.88rem; font-weight: 500;
+}
+.progress li::before { content: counter(stage) ". "; }
+.progress li.active { border-color: var(--aqua); color: var(--aqua); }
+.progress li.done { color: #bdbdbd; }
+
+.panel[hidden] { display: none; }
+.panel h3 { margin: 0 0 1rem; font-size: 1.2rem; font-weight: 600; }
+
+.divider-text { color: var(--gray); font-size: 0.85rem; margin: 1.6rem 0 0.8rem; }
+
+.slot-input {
+    width: 100%; font: inherit; font-size: 1.2rem; font-weight: 600;
+    text-transform: uppercase; text-align: center;
+    padding: 0.7rem; border-radius: 10px;
+    border: 1px solid #333; background: var(--black); color: var(--white);
+}
+.slot-input:focus { border-color: var(--aqua); outline: none; }
+
+/* Visit summary */
+.summary { list-style: none; margin: 0 0 1.4rem; padding: 0; }
+.summary li {
+    display: flex; justify-content: space-between;
+    padding: 0.6rem 0; border-bottom: 1px solid var(--line); font-size: 0.95rem;
+}
+.summary li span:first-child { color: var(--gray); }
+.fee { font-size: 3rem; font-weight: 600; letter-spacing: -0.03em; line-height: 1; margin: 0.4rem 0 1.4rem; }
+.fee.free { color: var(--aqua); }
+
+/* Payment method choices */
+.methods { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.6rem; margin-bottom: 0.4rem; }
+.method input { position: absolute; opacity: 0; pointer-events: none; }
+.method span {
+    display: block; text-align: center; padding: 0.8rem 0.4rem;
+    border: 1px solid #333; border-radius: 10px;
+    font-weight: 500; font-size: 0.92rem; cursor: pointer;
+}
+.method input:checked + span { border-color: var(--aqua); color: var(--aqua); background: rgba(20, 239, 208, 0.06); }
+.method input:focus-visible + span { outline: 2px solid var(--aqua); outline-offset: 2px; }
+
+/* Waiting for confirmation */
+.waiting { display: flex; align-items: center; gap: 0.7rem; font-weight: 500; }
+.sim {
+    margin-top: 1.4rem; padding: 1rem;
+    border: 1px dashed #3a3a3a; border-radius: 12px;
+}
+.sim p { margin: 0 0 0.8rem; color: var(--gray); font-size: 0.85rem; }
+.sim .btn { width: 100%; margin-top: 0.5rem; }
+.btn-danger { background: var(--red); color: var(--black); }
+
+/* Barrier illustration */
+.barrier-card {
+    background: var(--surface); border: 1px solid var(--line); border-radius: 18px;
+    padding: 1.8rem; text-align: center;
+}
+.barrier-svg { width: 100%; max-width: 360px; height: auto; }
+#barrierArm { transform-box: fill-box; transform-origin: 0% 50%; }
+.barrier-status { margin-top: 1rem; font-weight: 600; font-size: 1.05rem; }
+.barrier-status.open { color: var(--aqua); }
+.barrier-status.closed { color: var(--red); }

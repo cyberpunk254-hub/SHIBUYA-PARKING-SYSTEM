@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <title>{% block title %}Shibuya Parking System{% endblock %}</title>
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<header class="site-header">
+    <div class="header-inner">
+        <a class="brand" href="/" aria-label="Shibuya Parking home">
+            <svg viewBox="0 0 64 64" aria-hidden="true">
+                <polygon points="32,2 58,17 58,47 32,62 6,47 6,17" fill="#111" stroke="#14EFD0" stroke-width="3"/>
+                <path d="M16 40 Q32 30 50 34" fill="none" stroke="#FF4B4B" stroke-width="3" stroke-linecap="round"/>
+                <path d="M32 13 C25 13 20 18 20 25 C20 32 32 44 32 44 C32 44 44 32 44 25 C44 18 39 13 32 13 Z" fill="#14EFD0"/>
+                <text x="32" y="30" text-anchor="middle" font-family="Sora, Arial" font-weight="700" font-size="13" fill="#111">P</text>
+            </svg>
+            Shibuya Parking
+        </a>
+
+        <nav class="site-nav" aria-label="Main">
+            <a href="/">Live slots</a>
+            <a href="/entry-page">Check in</a>
+            <a href="/exit-page">Pay and exit</a>
+            <a href="/admin">Admin</a>
+        </nav>
+
+        <span class="clock" id="clock"></span>
+    </div>
+</header>
+
+<main>
+    {% block content %}{% endblock %}
+</main>
+
+<footer class="site-footer">
+    Shibuya Parking System, designed and built by Allan Gachuki Gichuru (CIT-227-058/2025), Multimedia University of Kenya.
+</footer>
+
+<div class="ticker" aria-hidden="true">
+    <div class="ticker-track">
+        <span>30 minutes free</span>
+        <span>Up to 2 hours: Ksh 50</span>
+        <span>Up to 4 hours: Ksh 100</span>
+        <span>Up to 6 hours: Ksh 300</span>
+        <span>Over 6 hours: Ksh 500</span>
+        <span>Pay with M-Pesa, card or cash</span>
+    </div>
+</div>
+
+<!-- Motion: the plain-JavaScript version of Framer Motion, for animations
+     and scroll triggers. Loaded once here so every page can use it. -->
+<script src="https://cdn.jsdelivr.net/npm/motion@13.4.4/dist/motion.js"></script>
+
+<script>
+// Clock in the header, refreshed every half minute.
+(function () {
+    var clock = document.getElementById("clock");
+    function tick() {
+        clock.textContent = new Date().toLocaleString("en-KE", {
+            weekday: "long", day: "numeric", month: "long",
+            hour: "2-digit", minute: "2-digit"
+        });
+    }
+    tick();
+    setInterval(tick, 30000);
+})();
+</script>
+
+{% block scripts %}{% endblock %}
+</body>
+</html>

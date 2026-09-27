@@ -4,7 +4,10 @@
 
 from datetime import datetime
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, Form
+from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
 
 from storage import parking_slots, vehicle_capture, active_vehicles, billing, exception_log
 from slot_management import calculate_available_slots
@@ -25,18 +28,32 @@ from billing import (
 from exception_handling import log_exception
 from reporting import generate_report
 
+
 app = FastAPI(title="Shibuya Parking System")
+
+# Serve CSS and other static files from the /static folder.
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
+# HTML pages are rendered from the /templates folder.
+templates = Jinja2Templates(directory="templates")
 
 
 # ---------------------------------------------------------------
 # SLOT DISPLAY
 # ---------------------------------------------------------------
+@app.get("/", response_class=HTMLResponse)
+def display_board(request: Request):
+    """Slot Display: the live board drivers see before entry."""
+    return templates.TemplateResponse(request, "display.html", {
+        "available": calculate_available_slots(),
+        "total": len(parking_slots),
+        "slots": parking_slots,
+    })
 
-@app.get("/")
-def home():
-    """Live availability, as shown on the board at the gate."""
+@app.get("/api/availability")
+def api_availability():
+    """JSON version of the board, kept for testing via /docs."""
     return {
-        "system": "Shibuya Parking System",
         "availableSlots": calculate_available_slots(),
         "totalSlots": len(parking_slots),
     }
@@ -55,10 +72,27 @@ def view_slots():
 @app.post("/entry")
 def vehicle_entry(number_plate: str):
     """Record a vehicle arriving at the entry gate."""
+    # "kda 123x " and "KDA 123X" are the same vehicle, so store one form.
+    number_plate = number_plate.strip().upper()
+
+    if not number_plate:
+        return {
+            "success": False,
+            "reason": "EMPTY_PLATE",
+            "message": "Enter a number plate to check in.",
+        }
+
     result = record_vehicle_entry(number_plate)
     result["availableSlots"] = calculate_available_slots()
     return result
 
+@app.get("/entry-page", response_class=HTMLResponse)
+def entry_page(request: Request):
+    """Check-in screen used at the entry gate."""
+    return templates.TemplateResponse(request, "entry.html", {
+        "available": calculate_available_slots(),
+        "total": len(parking_slots),
+    })
 
 # ---------------------------------------------------------------
 # EXIT
@@ -72,6 +106,7 @@ def exit_lookup(number_plate: str):
     reaches the barrier. exitTime is only recorded later, once
     payment is verified.
     """
+    number_plate = number_plate.strip().upper()
     record = find_vehicle_by_plate(number_plate)
 
     if record is None:
@@ -102,6 +137,7 @@ def exit_lookup(number_plate: str):
 def exit_lookup_by_slot(slot_taken: str):
     """Step 4a fallback: attendant searches by slot when the plate
     cannot be matched."""
+    slot_taken = slot_taken.strip().upper()
     number_plate, record = find_vehicle_by_slot(slot_taken)
 
     if record is None:
@@ -125,9 +161,8 @@ def exit_lookup_by_slot(slot_taken: str):
 @app.post("/payment/start")
 def start_payment(number_plate: str, payment_method: str):
     """Step 9: create a payment attempt with status PENDING."""
+    number_plate = number_plate.strip().upper()
     record = find_vehicle_by_plate(number_plate)
-    if record is None:
-        return {"success": False, "message": "No active record for this number plate."}
 
     vehicle_id = record["vehicleID"]
 
@@ -190,6 +225,7 @@ def payment_fail(transaction_id: str):
 def barrier_exit(number_plate: str, transaction_id: str):
     """Barrier Control: open the exit barrier only on a VERIFIED payment,
     then complete the exit (steps 8 to 11)."""
+    number_plate = number_plate.strip().upper()
     if transaction_id not in billing:
         return {"success": False, "message": "Unknown transaction."}
 
@@ -222,6 +258,10 @@ def barrier_exit(number_plate: str, transaction_id: str):
         "availableSlots": calculate_available_slots(),
     }
 
+@app.get("/exit-page", response_class=HTMLResponse)
+def exit_page(request: Request):
+    """Pay-and-exit screen used at the exit barrier."""
+    return templates.TemplateResponse(request, "exit.html", {})
 
 # ---------------------------------------------------------------
 # ADMINISTRATIVE REPORTING
